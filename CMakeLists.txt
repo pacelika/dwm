@@ -1,5 +1,5 @@
-project(dwm_skates)
 cmake_minimum_required(VERSION "3.30")
+project(dwm_skates)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)

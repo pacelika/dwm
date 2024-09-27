@@ -1,32 +1,11 @@
-/* See LICENSE file for copyright and license details.
- *
- * dynamic window manager is designed like any other X client as well. It is
- * driven through handling X events. In contrast to other X clients, a window
- * manager selects for SubstructureRedirectMask on the root window, to receive
- * events about window (dis-)appearance. Only one X connection at a time is
- * allowed to select for this event mask.
- *
- * The event handlers of dwm are organized in an array which is accessed
- * whenever a new event has been fetched. This allows event dispatching
- * in O(1) time.
- *
- * Each child of the root window is called a client, except windows which have
- * set the override_redirect flag. Clients are organized in a linked client
- * list on each monitor, the focus history is remembered through a stack list
- * on each monitor. Each client contains a bit array to indicate the tags of a
- * client.
- *
- * Keys and tagging rules are organized as arrays and defined in config.h.
- *
- * To understand everything else, start reading main().
- */
-
 #include <X11/Xatom.h>
+#include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
+
 #include <locale.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -36,16 +15,14 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
-#include <X11/Xft/Xft.h>
 
 #include <dwm_skates/config.h>
-#include <dwm_skates/def.h>
-#include <dwm_skates/wm_func_def.h>
-
 #include <dwm_skates/drw.h>
+#include <dwm_skates/impl/config.c>
 #include <dwm_skates/util.h>
 
 /* macros */
@@ -64,8 +41,6 @@
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
-
-#include <dwm_skates/impl/config.c>
 
 /* variables */
 static const char broken[] = "broken";
@@ -1715,7 +1690,7 @@ void updatesizehints(Client *c) {
 
 void updatestatus(void) {
   if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
-    strcpy(stext, "dwm-" VERSION);
+    strcpy(stext, "dwm_sk-" VERSION);
   drawbar(selmon);
 }
 
@@ -1830,13 +1805,13 @@ void zoom(const Arg *arg) {
 
 int main(int argc, char *argv[]) {
   if (argc == 2 && !strcmp("-v", argv[1]))
-    die("dwm-" VERSION);
+    die("dwm_sk-" VERSION);
   else if (argc != 1)
-    die("usage: dwm [-v]");
+    die("usage: dwm_sk [-v]");
   if (!setlocale(LC_CTYPE, "") || !XSupportsLocale())
     fputs("warning: no locale support\n", stderr);
   if (!(dpy = XOpenDisplay(NULL)))
-    die("dwm: cannot open display");
+    die("dwm_sk: cannot open display");
   checkotherwm();
   setup();
 #ifdef __OpenBSD__

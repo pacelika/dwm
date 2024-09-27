@@ -1,17 +1,8 @@
 #pragma once
-#include <dwm_skates/config.h>
-#include <dwm_skates/def.h>
 
+#include <dwm_skates/def.h>
 #include <dwm_skates/impl/wm_def.c>
 #include <dwm_skates/wm_func_def.h>
-
-#include <X11/Xlib.h>
-#include <X11/Xproto.h>
-#include <X11/Xutil.h>
-#include <X11/cursorfont.h>
-#include <X11/keysym.h>
-
-#include <X11/Xft/Xft.h>
 
 static const Rule rules[2] = {
     /* xprop(1):

@@ -1,3 +1,4 @@
 # dwm_skates
 
-An easier to work with dwm source
+An easier 'suckless dwm' source code <br />
+Official: https://dwm.suckless.org/ 
