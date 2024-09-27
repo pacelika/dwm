@@ -1,3 +1,4 @@
+#include "dwm_skates/commands.h"
 #include <X11/Xatom.h>
 #include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
@@ -15,6 +16,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#define XINERAMA 1
 
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
@@ -1330,6 +1333,8 @@ void setup(void) {
   XSelectInput(dpy, root, wa.event_mask);
   grabkeys();
   focus(NULL);
+
+  system("bash ~/dwm_st/scripts/startup.sh"); // temp //
 }
 
 void seturgent(Client *c, int urg) {
@@ -1363,7 +1368,7 @@ void showhide(Client *c) {
 void spawn(const Arg *arg) {
   struct sigaction sa;
 
-  if (arg->v == dmenucmd)
+  if (arg->v == programlauncher_cmd)
     dmenumon[0] = '0' + selmon->num;
   if (fork() == 0) {
     if (dpy)
