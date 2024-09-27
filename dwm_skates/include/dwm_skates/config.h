@@ -1,28 +1,7 @@
 #pragma once
 
 #include <X11/Xlib.h>
-
-typedef union {
-  int i;
-  unsigned int ui;
-  float f;
-  const void *v;
-} Arg;
-
-typedef struct {
-  unsigned int click;
-  unsigned int mask;
-  unsigned int button;
-  void (*func)(const Arg *arg);
-  const Arg arg;
-} Button;
-
-typedef struct _Monitor Monitor;
-typedef struct _Layout Layout;
-typedef struct _Rule Rule;
-typedef struct _Key Key;
-
-enum { SchemeNorm, SchemeSel }; /* color schemes */
+#include <dwm_skates/def.h>
 
 /* See LICENSE file for copyright and license details. */
 
