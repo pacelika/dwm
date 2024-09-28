@@ -1,3 +1,4 @@
+#include "sk/lua/lobject.h"
 #include <X11/Xatom.h>
 #include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
@@ -1320,8 +1321,8 @@ void setup(void) {
   grabkeys();
   focus(NULL);
 
-  system("bash ~/dwm_sk/scripts/startup.sh"); // temp (will be replaced with
-                                              // lua) //
+  // system("bash ~/dwm_sk/scripts/startup.sh"); // temp (will be replaced with
+  //  lua) //
 }
 
 void seturgent(Client *c, int urg) {
@@ -1806,15 +1807,181 @@ void handle_args(int argc, char *argv[]) {
     die("dwm_sk: cannot open display");
 }
 
+void assign_lua_keys(lua_State *L) {
+  lua_getglobal(L, "keys");
+
+  const void *commands[10] = {0};
+  int command_count = 0;
+
+  if (lua_isnil(L, -1)) {
+    printf("could not find keys\n");
+    return;
+  }
+
+  int keys_len = luaL_len(L, -1);
+
+  for (int i = 1; i <= keys_len; ++i) {
+    lua_pushinteger(L, i);
+    lua_gettable(L, -2);
+
+    Key *key = &keys[i - 1];
+
+    if (lua_istable(L, -1)) {
+      lua_getfield(L, -1, "modifier");
+
+      if (lua_isnumber(L, -1)) {
+        key->mod = (unsigned int)lua_tonumber(L, -1);
+      }
+
+      lua_pop(L, 1);
+
+      lua_getfield(L, -1, "key");
+
+      if (lua_isnumber(L, -1)) {
+        key->keysym = (unsigned int)lua_tonumber(L, -1);
+      }
+
+      lua_pop(L, 1);
+
+      lua_getfield(L, -1, "func");
+
+      if (lua_isstring(L, -1)) {
+        const char *func_name = lua_tostring(L, -1);
+
+        if (!strcmp(func_name, "spawn")) {
+          key->func = spawn;
+        }
+
+        key->func = spawn;
+      }
+
+      lua_pop(L, 1);
+
+      lua_getfield(L, -1, "arg");
+
+      if (lua_istable(L, -1)) {
+        if (lua_getfield(L, -1, "v")) {
+          int command_length = luaL_len(L, -1);
+
+          key->arg.v = malloc(sizeof(const char *) * command_length);
+
+          for (int command_index = 1; command_index <= command_length;
+               ++command_index) {
+            lua_rawgeti(L, -1, command_index);
+
+            const char *cmd = lua_tostring(L, -1);
+            // printf("cmd = %s\n", cmd);
+
+            ((const char **)(key->arg.v))[command_index - 1] = strdup(cmd);
+
+            lua_pop(L, 1);
+          }
+
+          ((const char **)(key->arg.v))[command_length] = NULL;
+          commands[command_count] = key->arg.v;
+          command_count++;
+        }
+
+        lua_pop(L, 1);
+
+        if (lua_getfield(L, -1, "i")) {
+          key->arg.i = (int)lua_tonumber(L, -1);
+        }
+
+        lua_pop(L, 1);
+
+        if (lua_getfield(L, -1, "f")) {
+          key->arg.f = (float)lua_tonumber(L, -1);
+        }
+
+        lua_pop(L, 1);
+
+        if (lua_getfield(L, -1, "ui")) {
+          key->arg.ui = (unsigned int)lua_tonumber(L, -1);
+        }
+
+        lua_pop(L, 1);
+      }
+
+      lua_pop(L, 1);
+    }
+
+    lua_pop(L, 1);
+  }
+
+  for (int i = 0; i < command_count; i++) {
+    keys[i].arg.v = commands[i];
+  }
+}
+
+void set_keyglobals(lua_State *L) {
+  if (dpy == NULL) {
+    printf("Unable to open display\n");
+    return;
+  }
+
+  int min_keycode, max_keycode;
+  XDisplayKeycodes(dpy, &min_keycode, &max_keycode);
+
+  for (int keycode = min_keycode; keycode <= max_keycode; ++keycode) {
+    KeySym keysym = XKeycodeToKeysym(dpy, keycode, 0);
+    if (keysym != NoSymbol) {
+      char *name = XKeysymToString(keysym);
+      char buffer[100];
+      sprintf(buffer, "key_%s", name);
+      lua_pushinteger(L, keycode);
+      lua_setglobal(L, buffer);
+    }
+  }
+}
+
 void wm_init(int argc, char *argv[]) {
-  // lua_State *L = luaL_newstate();
-  // luaL_openlibs(L);
+  lua_State *L = luaL_newstate();
+  luaL_openlibs(L);
 
   handle_args(argc, argv);
+
+  const char *home_dir = getenv("HOME");
+
+  if (home_dir == NULL) {
+    fprintf(stderr, "Could get home home directory.\n");
+    return;
+  }
+
+  char script_path[256];
+
+  snprintf(script_path, sizeof(script_path), "%s/%s", home_dir,
+           "dwm_sk/rc.lua");
+
+  set_keyglobals(L);
+
+  int lua_has_error = luaL_dofile(L, script_path);
+
+  if (lua_has_error) {
+    checkotherwm();
+    scan();
+    cleanup();
+    XCloseDisplay(dpy);
+    return;
+  }
+
+  lua_getglobal(L, "_dwm_preinit");
+
+  if (lua_isfunction(L, -1)) {
+    lua_call(L, 0, 0);
+  }
+
+  assign_lua_keys(L);
 
   checkotherwm();
 
   setup();
+
+  lua_getglobal(L, "_dwm_init");
+
+  if (lua_isfunction(L, -1)) {
+    lua_call(L, 0, 0);
+  }
 
   scan();
 
@@ -1822,7 +1989,7 @@ void wm_init(int argc, char *argv[]) {
 
   cleanup();
 
-  // lua_close(L);
+  lua_close(L);
 
   XCloseDisplay(dpy);
 }

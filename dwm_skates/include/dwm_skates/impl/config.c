@@ -8,7 +8,7 @@
 #include <dwm_skates/impl/wm_def.c>
 #include <dwm_skates/wm_func_def.h>
 
-static const Rule rules[2] = {
+static const Rule rules[] = {
     /* xprop(1):
      *	WM_CLASS(STRING) = instance, class
      *	WM_NAME(STRING) = title
@@ -26,9 +26,9 @@ static const Layout layouts[3] = {
     {"[M]", monocle},
 };
 
-static const Key keys[] = {
+static Key keys[] = {
     /* modifier                     key        function        argument */
-    {MODKEY, XK_d, spawn, {.v = programlauncher_cmd}},
+    {MODKEY, XK_g, spawn, {.v = programlauncher_cmd}},
     {MODKEY, XK_Return, spawn, {.v = termcmd}},
     {MODKEY, XK_b, togglebar, {0}},
     {MODKEY, XK_j, focusstack, {.i = +1}},

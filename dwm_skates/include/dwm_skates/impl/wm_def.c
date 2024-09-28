@@ -24,7 +24,7 @@ struct _Key {
   unsigned int mod;
   KeySym keysym;
   void (*func)(const Arg *);
-  const Arg arg;
+  Arg arg;
 };
 
 struct _Layout {
