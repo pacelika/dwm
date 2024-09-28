@@ -95,3 +95,4 @@ void zoom(const Arg *arg);
 
 int sendevent(Client *c, Atom proto);
 void wm_init(int argc, char *argv[]);
+void reload_dwm(const Arg *arg);

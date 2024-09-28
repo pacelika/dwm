@@ -30,6 +30,7 @@ static Key keys[] = {
     /* modifier                     key        function        argument */
     {MODKEY, XK_g, spawn, {.v = programlauncher_cmd}},
     {MODKEY, XK_Return, spawn, {.v = termcmd}},
+    {MODKEY | ShiftMask, XK_r, reload_dwm, {0}},
     {MODKEY, XK_b, togglebar, {0}},
     {MODKEY, XK_j, focusstack, {.i = +1}},
     {MODKEY, XK_k, focusstack, {.i = -1}},
