@@ -19,6 +19,6 @@ static char dmenumon[2] =
     "0"; /* component of dmenucmd, manipulated in spawn() */
 
 static const char *programlauncher_cmd[] = {"rofi", "-show", "run", SK_NULL};
-static const char *termcmd[] = {"alacritty", SK_NULL};
+static const char *termcmd[] = {"kitty", SK_NULL};
 
 static const char *cmd[4] = {"rofi", "-show", "run", SK_NULL};

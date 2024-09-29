@@ -1,4 +1,3 @@
-#include "sk/lua/lobject.h"
 #include <X11/X.h>
 #include <X11/Xatom.h>
 #include <X11/Xft/Xft.h>
@@ -67,8 +66,8 @@ static Drw *drw;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
-static const void *commands[10] = {0};
-static lua_State *L;
+static const void *commands[LENGTH(keys)] = {0};
+static lua_State *L = NULL;
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags {
@@ -1811,6 +1810,60 @@ void handle_args(int argc, char *argv[]) {
     die("dwm_sk: cannot open display");
 }
 
+int is_stack(const void *ptr) {
+  int local_var;
+  return (ptr > (void *)&local_var);
+}
+
+#define compile_time_key(K, V) K##_##V
+
+void set_default_keys() {
+  int end_index = 0;
+
+  for (int i = 0; i < LENGTH(keys); i++) {
+    if (keys[i].func == NULL) {
+      end_index = i;
+      break;
+    }
+  }
+
+  if (end_index == 0) {
+    return;
+  }
+
+  int offset = 0;
+
+  int tag = 0;
+  int key_sysm = XK_1;
+
+  keys[end_index + offset].keysym = XK_t;
+  keys[end_index + offset].mod = MODKEY;
+  keys[end_index + offset].func = setlayout;
+  keys[end_index + offset].arg.v = &layouts[0];
+  offset++;
+
+  keys[end_index + offset].keysym = XK_f;
+  keys[end_index + offset].mod = MODKEY;
+  keys[end_index + offset].func = setlayout;
+  keys[end_index + offset].arg.v = &layouts[1];
+  offset++;
+
+  keys[end_index + offset].keysym = XK_m;
+  keys[end_index + offset].mod = MODKEY;
+  keys[end_index + offset].func = setlayout;
+  keys[end_index + offset].arg.v = &layouts[2];
+  offset++;
+
+  // go to tags //
+  int c = 0;
+  for (int i = end_index + offset; i < end_index + offset + 9 * 4; i++) {
+    if (i < LENGTH(keys)) {
+      keys[i] = tagkeys[c];
+      c++;
+    }
+  }
+}
+
 void assign_lua_keys(lua_State *L) {
   lua_getglobal(L, "keys");
 
@@ -1829,6 +1882,9 @@ void assign_lua_keys(lua_State *L) {
 
     Key *key = &keys[i - 1];
 
+    if (key == NULL)
+      continue;
+
     if (lua_istable(L, -1)) {
       lua_getfield(L, -1, "modifier");
 
@@ -1841,7 +1897,6 @@ void assign_lua_keys(lua_State *L) {
       lua_getfield(L, -1, "key");
 
       if (lua_isnumber(L, -1)) {
-        // key->keysym = (KeySym)lua_tointeger(L, -1);
         key->keysym = XKeycodeToKeysym(dpy, lua_tointeger(L, -1), 0);
       }
 
@@ -1855,6 +1910,46 @@ void assign_lua_keys(lua_State *L) {
         if (!strcmp(func_name, "spawn")) {
           key->func = spawn;
         }
+
+        if (!strcmp(func_name, "quit")) {
+          key->func = quit;
+        }
+
+        if (!strcmp(func_name, "reload_dwm")) {
+          key->func = reload_dwm;
+        }
+
+        if (!strcmp(func_name, "killclient")) {
+          key->func = killclient;
+        }
+
+        if (!strcmp(func_name, "setlayout")) {
+          key->func = setlayout;
+        }
+
+        if (!strcmp(func_name, "togglefloating")) {
+          key->func = togglefloating;
+        }
+
+        if (!strcmp(func_name, "setmfact")) {
+          key->func = setmfact;
+        }
+
+        if (!strcmp(func_name, "incnmaster")) {
+          key->func = incnmaster;
+        }
+
+        if (!strcmp(func_name, "focusstack")) {
+          key->func = focusstack;
+        }
+
+        if (!strcmp(func_name, "tagmon")) {
+          key->func = tagmon;
+        }
+
+        if (!strcmp(func_name, "togglebar")) {
+          key->func = togglebar;
+        }
       }
 
       lua_pop(L, 1);
@@ -1865,23 +1960,28 @@ void assign_lua_keys(lua_State *L) {
         if (lua_getfield(L, -1, "v")) {
           int command_length = luaL_len(L, -1);
 
-          key->arg.v = malloc(sizeof(const char *) * command_length);
+          if (command_length == 0) {
+            return;
+          }
+
+          if (key->arg.v == NULL) {
+            key->arg.v = malloc(sizeof(const char *) * 8);
+          }
+
+          memset((const char **)key->arg.v, 0, 8);
 
           for (int command_index = 1; command_index <= command_length;
                ++command_index) {
             lua_rawgeti(L, -1, command_index);
 
             const char *cmd = lua_tostring(L, -1);
-            // printf("cmd = %s\n", cmd);
 
-            ((const char **)(key->arg.v))[command_index - 1] = strdup(cmd);
+            ((const char **)(key->arg.v))[command_index - 1] = cmd;
 
             lua_pop(L, 1);
           }
 
           ((const char **)(key->arg.v))[command_length] = NULL;
-          commands[command_count] = key->arg.v;
-          command_count++;
         }
 
         lua_pop(L, 1);
@@ -1911,9 +2011,7 @@ void assign_lua_keys(lua_State *L) {
     lua_pop(L, 1);
   }
 
-  for (int i = 0; i < command_count; i++) {
-    keys[i].arg.v = commands[i];
-  }
+  set_default_keys();
 }
 
 void set_keyglobals(lua_State *L) {
@@ -1935,6 +2033,12 @@ void set_keyglobals(lua_State *L) {
       lua_setglobal(L, buffer);
     }
   }
+
+  lua_pushinteger(L, MODKEY | ShiftMask);
+  lua_setglobal(L, "key_SUPER_SHIFT");
+
+  lua_pushinteger(L, MODKEY);
+  lua_setglobal(L, "key_SUPER");
 }
 
 void run_lua_script(void) {
@@ -1967,12 +2071,24 @@ void run_lua_script(void) {
   }
 }
 
+void ungrabkeys(Display *dpy, Window root) {
+  unsigned int i;
+  KeyCode code;
+
+  for (i = 0; i < LENGTH(keys); i++) {
+    if ((code = XKeysymToKeycode(dpy, keys[i].keysym))) {
+      XUngrabKey(dpy, code, keys[i].mod, root);
+    }
+  }
+}
+
 void wm_init(int argc, char *argv[]) {
   L = luaL_newstate();
   luaL_openlibs(L);
 
   handle_args(argc, argv);
   set_keyglobals(L);
+  memset(keys, 0, 50);
 
   run_lua_script();
 
@@ -2018,4 +2134,8 @@ void reload_dwm(const Arg *arg) {
   if (lua_isfunction(L, -1)) {
     lua_call(L, 0, 0);
   }
+
+  ungrabkeys(dpy, DefaultRootWindow(dpy));
+  assign_lua_keys(L);
+  grabkeys();
 }
