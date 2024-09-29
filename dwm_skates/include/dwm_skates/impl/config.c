@@ -26,7 +26,7 @@ static const Layout layouts[3] = {
     {"[M]", monocle},
 };
 
-static Key keys[50] = {
+static Key keys[100] = {
     /* modifier                     key        function        argument */
     // {MODKEY, XK_g, spawn, {.v = programlauncher_cmd}},
     // {MODKEY, XK_Return, spawn, {.v = termcmd}},

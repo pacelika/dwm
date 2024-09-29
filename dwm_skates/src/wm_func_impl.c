@@ -68,6 +68,7 @@ static Window root, wmcheckwin;
 
 static const void *commands[LENGTH(keys)] = {0};
 static lua_State *L = NULL;
+static int dwm_reload_count = 0;
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags {
@@ -1108,6 +1109,7 @@ void restack(Monitor *m) {
 }
 
 void run(void) {
+  reload_dwm(NULL);
   XEvent ev;
   /* main event loop */
   XSync(dpy, False);
@@ -1686,7 +1688,7 @@ void updatesizehints(Client *c) {
 
 void updatestatus(void) {
   if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
-    strcpy(stext, "dwm_sk-" VERSION);
+    strcpy(stext, "dwm_sk " VERSION);
   drawbar(selmon);
 }
 
@@ -1817,6 +1819,34 @@ int is_stack(const void *ptr) {
 
 #define compile_time_key(K, V) K##_##V
 
+void set_tag_key(int *tag_c, int end_index, int *offset, unsigned int mod,
+                 KeySym key, const void *func) {
+  keys[end_index + *offset].keysym = key;
+  keys[end_index + *offset].mod = mod;
+  keys[end_index + *offset].func = func;
+  keys[end_index + *offset].arg.ui = 1 << *tag_c;
+  *offset += 1;
+  *tag_c += 1;
+}
+
+void set_key_to_command(int index, int *offset, unsigned int mod, KeySym key,
+                        const void *func, const void *cmd) {
+  int _offset = 0;
+
+  if (offset != NULL) {
+    _offset = *offset;
+  }
+
+  keys[index + _offset].keysym = key;
+  keys[index + _offset].mod = mod;
+  keys[index + _offset].func = func;
+  keys[index + _offset].arg.v = cmd;
+
+  if (offset != NULL) {
+    *offset += 1;
+  }
+}
+
 void set_default_keys() {
   int end_index = 0;
 
@@ -1832,39 +1862,36 @@ void set_default_keys() {
   }
 
   int offset = 0;
+  int tag_c = 0;
 
-  int tag = 0;
-  int key_sysm = XK_1;
+  set_key_to_command(end_index, &offset, MODKEY, XK_t, setlayout, &layouts[0]);
+  set_key_to_command(end_index, &offset, MODKEY, XK_f, setlayout, &layouts[1]);
+  set_key_to_command(end_index, &offset, MODKEY, XK_m, setlayout, &layouts[2]);
 
-  keys[end_index + offset].keysym = XK_t;
-  keys[end_index + offset].mod = MODKEY;
-  keys[end_index + offset].func = setlayout;
-  keys[end_index + offset].arg.v = &layouts[0];
-  offset++;
+  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_1, view);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_2, view);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_3, view);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_4, view);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_5, view);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_6, view);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_7, view);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_8, view);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_9, view);
 
-  keys[end_index + offset].keysym = XK_f;
-  keys[end_index + offset].mod = MODKEY;
-  keys[end_index + offset].func = setlayout;
-  keys[end_index + offset].arg.v = &layouts[1];
-  offset++;
+  tag_c = 0;
 
-  keys[end_index + offset].keysym = XK_m;
-  keys[end_index + offset].mod = MODKEY;
-  keys[end_index + offset].func = setlayout;
-  keys[end_index + offset].arg.v = &layouts[2];
-  offset++;
-
-  // go to tags //
-  int c = 0;
-  for (int i = end_index + offset; i < end_index + offset + 9 * 4; i++) {
-    if (i < LENGTH(keys)) {
-      keys[i] = tagkeys[c];
-      c++;
-    }
-  }
+  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_1, tag);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_2, tag);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_3, tag);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_4, tag);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_5, tag);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_6, tag);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_7, tag);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_8, tag);
+  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_9, tag);
 }
 
-void assign_lua_keys(lua_State *L) {
+void assign_lua_keys() {
   lua_getglobal(L, "keys");
 
   int command_count = 0;
@@ -1965,10 +1992,10 @@ void assign_lua_keys(lua_State *L) {
           }
 
           if (key->arg.v == NULL) {
-            key->arg.v = malloc(sizeof(const char *) * 8);
+            key->arg.v = malloc(sizeof(const char *) * 100);
           }
 
-          memset((const char **)key->arg.v, 0, 8);
+          // memset((const char **)key->arg.v, 0, 8);
 
           for (int command_index = 1; command_index <= command_length;
                ++command_index) {
@@ -2014,7 +2041,7 @@ void assign_lua_keys(lua_State *L) {
   set_default_keys();
 }
 
-void set_keyglobals(lua_State *L) {
+void set_keyglobals() {
   if (dpy == NULL) {
     printf("Unable to open display\n");
     return;
@@ -2046,7 +2073,7 @@ void run_lua_script(void) {
     lua_close(L);
     L = luaL_newstate();
     luaL_openlibs(L);
-    set_keyglobals(L);
+    set_keyglobals();
   }
 
   const char *home_dir = getenv("HOME");
@@ -2067,7 +2094,6 @@ void run_lua_script(void) {
     checkotherwm();
     scan();
     cleanup();
-    return;
   }
 }
 
@@ -2087,18 +2113,16 @@ void wm_init(int argc, char *argv[]) {
   luaL_openlibs(L);
 
   handle_args(argc, argv);
-  set_keyglobals(L);
-  memset(keys, 0, 50);
 
+  set_keyglobals();
   run_lua_script();
 
+  assign_lua_keys();
   lua_getglobal(L, "_dwm_preinit");
 
   if (lua_isfunction(L, -1)) {
     lua_call(L, 0, 0);
   }
-
-  assign_lua_keys(L);
 
   checkotherwm();
 
@@ -2129,13 +2153,16 @@ void wm_init(int argc, char *argv[]) {
 
 void reload_dwm(const Arg *arg) {
   run_lua_script();
-  lua_getglobal(L, "_dwm_reload");
 
-  if (lua_isfunction(L, -1)) {
-    lua_call(L, 0, 0);
+  if (dwm_reload_count > 0) {
+    lua_getglobal(L, "_dwm_reload");
+
+    if (lua_isfunction(L, -1)) {
+      lua_call(L, 0, 0);
+    }
   }
 
-  ungrabkeys(dpy, DefaultRootWindow(dpy));
-  assign_lua_keys(L);
+  assign_lua_keys();
   grabkeys();
+  dwm_reload_count += 1;
 }
