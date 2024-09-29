@@ -22,6 +22,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <sk/lua/lauxlib.h>
@@ -66,9 +67,10 @@ static Drw *drw;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
-static const void *commands[LENGTH(keys)] = {0};
+// My variables //
 static lua_State *L = NULL;
 static int dwm_reload_count = 0;
+static char error_message[256] = {0};
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags {
@@ -1109,7 +1111,6 @@ void restack(Monitor *m) {
 }
 
 void run(void) {
-  reload_dwm(NULL);
   XEvent ev;
   /* main event loop */
   XSync(dpy, False);
@@ -1687,8 +1688,10 @@ void updatesizehints(Client *c) {
 }
 
 void updatestatus(void) {
-  if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
-    strcpy(stext, "dwm_sk " VERSION);
+  if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext))) {
+    // strcpy(stext, "dwm_sk " VERSION);
+    strcpy(stext, error_message);
+  }
   drawbar(selmon);
 }
 
@@ -1829,6 +1832,24 @@ void set_tag_key(int *tag_c, int end_index, int *offset, unsigned int mod,
   *tag_c += 1;
 }
 
+void set_key_to_func(int index, int *offset, unsigned int mod, KeySym key,
+                     const void *func) {
+
+  int _offset = 0;
+
+  if (offset != NULL) {
+    _offset = *offset;
+  }
+
+  keys[index + _offset].keysym = key;
+  keys[index + _offset].mod = mod;
+  keys[index + _offset].func = func;
+
+  if (offset != NULL) {
+    *offset += 1;
+  }
+}
+
 void set_key_to_command(int index, int *offset, unsigned int mod, KeySym key,
                         const void *func, const void *cmd) {
   int _offset = 0;
@@ -1867,6 +1888,8 @@ void set_default_keys() {
   set_key_to_command(end_index, &offset, MODKEY, XK_t, setlayout, &layouts[0]);
   set_key_to_command(end_index, &offset, MODKEY, XK_f, setlayout, &layouts[1]);
   set_key_to_command(end_index, &offset, MODKEY, XK_m, setlayout, &layouts[2]);
+  set_key_to_func(end_index, &offset, MODKEY | ShiftMask | ControlMask, XK_e,
+                  quit);
 
   set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_1, view);
   set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_2, view);
@@ -1894,10 +1917,10 @@ void set_default_keys() {
 void assign_lua_keys() {
   lua_getglobal(L, "keys");
 
-  int command_count = 0;
-
   if (lua_isnil(L, -1)) {
     printf("could not find keys\n");
+    strcpy(error_message, "Could not find keys");
+    system("xsetroot -name \"Could not find keys\"");
     return;
   }
 
@@ -1908,9 +1931,6 @@ void assign_lua_keys() {
     lua_gettable(L, -2);
 
     Key *key = &keys[i - 1];
-
-    if (key == NULL)
-      continue;
 
     if (lua_istable(L, -1)) {
       lua_getfield(L, -1, "modifier");
@@ -1984,27 +2004,43 @@ void assign_lua_keys() {
       lua_getfield(L, -1, "arg");
 
       if (lua_istable(L, -1)) {
-        if (lua_getfield(L, -1, "v")) {
+        lua_getfield(L, -1, "v");
+
+        if (lua_istable(L, -1)) {
           int command_length = luaL_len(L, -1);
 
           if (command_length == 0) {
+            strcpy(error_message, "command length is 0");
             return;
           }
 
-          if (key->arg.v == NULL) {
-            key->arg.v = malloc(sizeof(const char *) * 100);
-          }
+          // TODO: Fix memory leak on reload //
+          // if (key->arg.v != NULL) {
+          //   free((void *)key->arg.v);
+          //   key->arg.v = NULL;
+          // }
 
-          // memset((const char **)key->arg.v, 0, 8);
+          key->arg.v = malloc(sizeof(const char *) * (command_length + 1));
+
+          if (key->arg.v == NULL) {
+            strcpy(error_message, "Failed to allocate memory for key");
+            return;
+          }
 
           for (int command_index = 1; command_index <= command_length;
                ++command_index) {
+            if (!lua_istable(L, -1))
+              continue;
             lua_rawgeti(L, -1, command_index);
 
-            const char *cmd = lua_tostring(L, -1);
-
-            ((const char **)(key->arg.v))[command_index - 1] = cmd;
-
+            if (lua_isstring(L, -1)) {
+              const char *cmd = lua_tostring(L, -1);
+              ((const char **)(key->arg.v))[command_index - 1] = strdup(cmd);
+            } else {
+              ((const char **)(key->arg.v))[command_index - 1] = NULL;
+              strcpy(error_message, "Could not append, must be a string");
+              break;
+            }
             lua_pop(L, 1);
           }
 
@@ -2013,30 +2049,32 @@ void assign_lua_keys() {
 
         lua_pop(L, 1);
 
-        if (lua_getfield(L, -1, "i")) {
-          key->arg.i = (int)lua_tonumber(L, -1);
+        lua_getfield(L, -1, "i");
+        if (lua_isnumber(L, -1)) {
+          key->arg.i = (int)lua_tointeger(L, -1);
         }
-
         lua_pop(L, 1);
 
-        if (lua_getfield(L, -1, "f")) {
+        lua_getfield(L, -1, "f");
+        if (lua_isnumber(L, -1)) {
           key->arg.f = (float)lua_tonumber(L, -1);
         }
 
         lua_pop(L, 1);
 
-        if (lua_getfield(L, -1, "ui")) {
+        lua_getfield(L, -1, "ui");
+        if (lua_isnumber(L, -1)) {
           key->arg.ui = (unsigned int)lua_tonumber(L, -1);
         }
-
         lua_pop(L, 1);
       }
-
       lua_pop(L, 1);
     }
 
     lua_pop(L, 1);
   }
+
+  // INFO: Maybe pop keys table //
 
   set_default_keys();
 }
@@ -2086,7 +2124,7 @@ void run_lua_script(void) {
   char script_path[256];
 
   snprintf(script_path, sizeof(script_path), "%s/%s", home_dir,
-           "dwm_sk/rc.lua");
+           ".config/dwm_sk/rc.lua");
 
   int lua_has_error = luaL_dofile(L, script_path);
 
@@ -2106,12 +2144,25 @@ void ungrabkeys(Display *dpy, Window root) {
       XUngrabKey(dpy, code, keys[i].mod, root);
     }
   }
+
+  XSync(dpy, False);
+}
+
+int error_occured = 0;
+
+int error_handler(Display *display, XErrorEvent *event) {
+  error_occured = 1;
+  return 0;
 }
 
 void wm_init(int argc, char *argv[]) {
+  if (XInitThreads() == 0) {
+    printf("Failed to init threads\n");
+    return;
+  }
+
   L = luaL_newstate();
   luaL_openlibs(L);
-
   handle_args(argc, argv);
 
   set_keyglobals();
@@ -2124,15 +2175,30 @@ void wm_init(int argc, char *argv[]) {
     lua_call(L, 0, 0);
   }
 
+  lua_pop(L, 1);
+
   checkotherwm();
 
   setup();
+
+  XSetErrorHandler(error_handler);
 
   lua_getglobal(L, "_dwm_init");
 
   if (lua_isfunction(L, -1)) {
     lua_call(L, 0, 0);
   }
+
+  lua_pop(L, 1);
+
+  FILE *file = fopen("out.txt", "w");
+
+  if (file == NULL) {
+    return;
+  }
+
+  fprintf(file, "%s", error_message);
+  fclose(file);
 
   scan();
 
@@ -2148,21 +2214,32 @@ void wm_init(int argc, char *argv[]) {
     lua_call(L, 0, 0);
   }
 
+  lua_pop(L, 1);
+
   lua_close(L);
+}
+
+int should_run_function(int interval) {
+  static time_t last_execution_time = 0; // Holds the last execution time
+  time_t current_time = time(NULL);      // Get the current time
+
+  if (current_time - last_execution_time >= interval) {
+    last_execution_time = current_time; // Update the last execution time
+    return 1; // Enough time has passed, run the function
+  }
+  return 0; // Not enough time has passed, don't run the function
 }
 
 void reload_dwm(const Arg *arg) {
   run_lua_script();
+  lua_getglobal(L, "_dwm_reload");
 
-  if (dwm_reload_count > 0) {
-    lua_getglobal(L, "_dwm_reload");
-
-    if (lua_isfunction(L, -1)) {
-      lua_call(L, 0, 0);
-    }
+  if (lua_isfunction(L, -1)) {
+    lua_call(L, 0, 0);
   }
 
+  ungrabkeys(dpy, DefaultRootWindow(dpy));
   assign_lua_keys();
   grabkeys();
-  dwm_reload_count += 1;
+  XSync(dpy, False);
 }

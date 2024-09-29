@@ -12,7 +12,7 @@ commands = {
 keys = {
 	{ modifier = key_SUPER, key = key_d, func = "spawn", arg = { v = commands.program_launcher } },
 	{ modifier = key_SUPER, key = key_Return, func = "spawn", arg = { v = commands.terminal } },
-	{ modifier = key_SUPER, key = key_q, func = "killclient", arg = { v = commands.program_launcher } },
+	{ modifier = key_SUPER, key = key_q, func = "killclient" },
 
 	{ modifier = key_SUPER_SHIFT, key = key_r, func = "reload_dwm" },
 	{ modifier = key_SUPER_SHIFT, key = key_q, func = "quit" },
