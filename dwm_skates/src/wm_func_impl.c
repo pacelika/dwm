@@ -2014,11 +2014,10 @@ void assign_lua_keys() {
             return;
           }
 
-          // TODO: Fix memory leak on reload //
-          // if (key->arg.v != NULL) {
-          //   free((void *)key->arg.v);
-          //   key->arg.v = NULL;
-          // }
+          if (key->arg.v != NULL) {
+            free((void *)key->arg.v);
+            key->arg.v = NULL;
+          }
 
           key->arg.v = malloc(sizeof(const char *) * (command_length + 1));
 
@@ -2029,8 +2028,10 @@ void assign_lua_keys() {
 
           for (int command_index = 1; command_index <= command_length;
                ++command_index) {
-            if (!lua_istable(L, -1))
+            if (!lua_istable(L, -1)) {
+              strcpy(error_message, "[Error] command is not a table");
               continue;
+            }
             lua_rawgeti(L, -1, command_index);
 
             if (lua_isstring(L, -1)) {
@@ -2038,7 +2039,8 @@ void assign_lua_keys() {
               ((const char **)(key->arg.v))[command_index - 1] = strdup(cmd);
             } else {
               ((const char **)(key->arg.v))[command_index - 1] = NULL;
-              strcpy(error_message, "Could not append, must be a string");
+              strcpy(error_message,
+                     "Could not append to command, must be a string");
               break;
             }
             lua_pop(L, 1);
@@ -2073,8 +2075,6 @@ void assign_lua_keys() {
 
     lua_pop(L, 1);
   }
-
-  // INFO: Maybe pop keys table //
 
   set_default_keys();
 }
@@ -2238,8 +2238,13 @@ void reload_dwm(const Arg *arg) {
     lua_call(L, 0, 0);
   }
 
+  for (int i = 0; i < LENGTH(keys); i++) {
+    keys[i].func = NULL;
+  }
+
   ungrabkeys(dpy, DefaultRootWindow(dpy));
   assign_lua_keys();
   grabkeys();
   XSync(dpy, False);
+  dwm_reload_count++;
 }
