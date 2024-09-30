@@ -92,7 +92,9 @@ int xerror(Display *dpy, XErrorEvent *ee);
 int xerrordummy(Display *dpy, XErrorEvent *ee);
 int xerrorstart(Display *dpy, XErrorEvent *ee);
 void zoom(const Arg *arg);
-
 int sendevent(Client *c, Atom proto);
+
 void wm_init(int argc, char *argv[]);
 void reload_dwm(const Arg *arg);
+SKActionResult load_tags(void);
+SKActionResult load_colors(void);

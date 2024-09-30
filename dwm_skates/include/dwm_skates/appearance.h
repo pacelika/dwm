@@ -14,13 +14,13 @@ static const char col_gray3[] = "#bbbbbb";
 static const char col_gray4[] = "#eeeeee";
 static const char col_cyan[] = "#005577";
 
-static const char *colors[][3] = {
+static const char *colors[2][3] = {
     /*               fg         bg         border   */
-    [SchemeNorm] = {col_gray3, col_gray1, col_gray2},
-    [SchemeSel] = {col_gray4, col_cyan, col_cyan},
+    // [SchemeNorm] = {col_gray3, col_gray1, col_gray2},
+    // [SchemeSel] = {col_gray4, col_cyan, col_cyan},
 };
 
-static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
+static const char *tags[9] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
 /* layout(s) */
 static const float mfact = 0.55; /* factor of master area size [0.05..0.95] */

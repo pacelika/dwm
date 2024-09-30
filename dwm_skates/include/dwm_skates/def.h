@@ -54,3 +54,8 @@ enum {
   ClkRootWin,
   ClkLast
 }; /* clicks */
+
+typedef enum {
+  SK_ACTION_FAILURE,
+  SK_ACTION_SUCCESS,
+} SKActionResult;

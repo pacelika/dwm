@@ -1,3 +1,4 @@
+#include "dwm_skates/def.h"
 #include <X11/X.h>
 #include <X11/Xatom.h>
 #include <X11/Xft/Xft.h>
@@ -15,6 +16,7 @@
 #include <dwm_skates/wm_func_def.h>
 
 #include <locale.h>
+#include <math.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -1915,12 +1917,13 @@ void set_default_keys() {
 }
 
 void assign_lua_keys() {
-  lua_getglobal(L, "keys");
+  lua_getglobal(L, "dwm_keys");
 
   if (lua_isnil(L, -1)) {
     printf("could not find keys\n");
     strcpy(error_message, "Could not find keys");
     system("xsetroot -name \"Could not find keys\"");
+    set_default_keys();
     return;
   }
 
@@ -1933,7 +1936,7 @@ void assign_lua_keys() {
     Key *key = &keys[i - 1];
 
     if (lua_istable(L, -1)) {
-      lua_getfield(L, -1, "modifier");
+      lua_getfield(L, -1, "modkey");
 
       if (lua_isnumber(L, -1)) {
         key->mod = (unsigned int)lua_tointeger(L, -1);
@@ -1949,7 +1952,7 @@ void assign_lua_keys() {
 
       lua_pop(L, 1);
 
-      lua_getfield(L, -1, "func");
+      lua_getfield(L, -1, "func_name");
 
       if (lua_isstring(L, -1)) {
         const char *func_name = lua_tostring(L, -1);
@@ -1994,6 +1997,10 @@ void assign_lua_keys() {
           key->func = tagmon;
         }
 
+        if (!strcmp(func_name, "focusmon")) {
+          key->func = focusmon;
+        }
+
         if (!strcmp(func_name, "togglebar")) {
           key->func = togglebar;
         }
@@ -2001,10 +2008,10 @@ void assign_lua_keys() {
 
       lua_pop(L, 1);
 
-      lua_getfield(L, -1, "arg");
+      lua_getfield(L, -1, "data");
 
       if (lua_istable(L, -1)) {
-        lua_getfield(L, -1, "v");
+        lua_getfield(L, -1, "argv");
 
         if (lua_istable(L, -1)) {
           int command_length = luaL_len(L, -1);
@@ -2051,20 +2058,29 @@ void assign_lua_keys() {
 
         lua_pop(L, 1);
 
-        lua_getfield(L, -1, "i");
+        lua_getfield(L, -1, "argn");
+
         if (lua_isnumber(L, -1)) {
-          key->arg.i = (int)lua_tointeger(L, -1);
+          double int_s;
+          double number = lua_tonumber(L, -1);
+
+          if (modf(number, &int_s) == 0.0) {
+            key->arg.i = (int)number;
+          } else {
+            key->arg.f = (float)number;
+          }
         }
+
         lua_pop(L, 1);
 
-        lua_getfield(L, -1, "f");
-        if (lua_isnumber(L, -1)) {
-          key->arg.f = (float)lua_tonumber(L, -1);
-        }
+        // lua_getfield(L, -1, "f");
+        // if (lua_isnumber(L, -1)) {
+        //   key->arg.f = (float)lua_tonumber(L, -1);
+        // }
+        //
+        // lua_pop(L, 1);
 
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "ui");
+        lua_getfield(L, -1, "argun");
         if (lua_isnumber(L, -1)) {
           key->arg.ui = (unsigned int)lua_tonumber(L, -1);
         }
@@ -2100,10 +2116,10 @@ void set_keyglobals() {
   }
 
   lua_pushinteger(L, MODKEY | ShiftMask);
-  lua_setglobal(L, "key_SUPER_SHIFT");
+  lua_setglobal(L, "key_super_shift");
 
   lua_pushinteger(L, MODKEY);
-  lua_setglobal(L, "key_SUPER");
+  lua_setglobal(L, "key_super");
 }
 
 void run_lua_script(void) {
@@ -2156,17 +2172,20 @@ int error_handler(Display *display, XErrorEvent *event) {
 }
 
 void wm_init(int argc, char *argv[]) {
-  if (XInitThreads() == 0) {
-    printf("Failed to init threads\n");
-    return;
-  }
-
   L = luaL_newstate();
   luaL_openlibs(L);
   handle_args(argc, argv);
 
   set_keyglobals();
   run_lua_script();
+
+  if (load_tags() == SK_ACTION_FAILURE) {
+    // Handle failure;
+  }
+
+  if (load_colors() == SK_ACTION_FAILURE) {
+    // Handle failure;
+  }
 
   assign_lua_keys();
   lua_getglobal(L, "_dwm_preinit");
@@ -2190,15 +2209,6 @@ void wm_init(int argc, char *argv[]) {
   }
 
   lua_pop(L, 1);
-
-  FILE *file = fopen("out.txt", "w");
-
-  if (file == NULL) {
-    return;
-  }
-
-  fprintf(file, "%s", error_message);
-  fclose(file);
 
   scan();
 
@@ -2246,5 +2256,127 @@ void reload_dwm(const Arg *arg) {
   assign_lua_keys();
   grabkeys();
   XSync(dpy, False);
-  dwm_reload_count++;
+
+  // TODO: reload tags and colors //
+}
+
+#define COLOR_FG 0
+#define COLOR_BG 1
+#define COLOR_BORDER 2
+
+SKActionResult load_colors(void) {
+  if (L == NULL) {
+    return SK_ACTION_FAILURE;
+  }
+
+  lua_getglobal(L, "dwm_colors");
+
+  if (!lua_istable(L, -1)) {
+    lua_pop(L, 1);
+    return SK_ACTION_FAILURE;
+  }
+
+  lua_getfield(L, -1, "selected");
+
+  if (!lua_istable(L, -1)) {
+    lua_pop(L, 1);
+    return SK_ACTION_FAILURE;
+  }
+
+  lua_getfield(L, -1, "fg");
+
+  if (lua_isstring(L, -1)) {
+    colors[SchemeSel][COLOR_FG] = strdup(lua_tostring(L, -1));
+  }
+  // pops fg //
+  lua_pop(L, 1);
+
+  lua_getfield(L, -1, "bg");
+
+  if (lua_isstring(L, -1)) {
+    colors[SchemeSel][COLOR_BG] = strdup(lua_tostring(L, -1));
+  }
+  // pops bg //
+  lua_pop(L, 1);
+
+  lua_getfield(L, -1, "border");
+
+  if (lua_isstring(L, -1)) {
+    colors[SchemeSel][COLOR_BORDER] = strdup(lua_tostring(L, -1));
+  }
+
+  // pop border and selected table //
+  lua_pop(L, 2);
+
+  // back to dwm_colors
+
+  lua_getfield(L, -1, "normal");
+
+  if (!lua_istable(L, -1)) {
+    lua_pop(L, 1);
+    return SK_ACTION_FAILURE;
+  }
+
+  lua_getfield(L, -1, "fg");
+
+  if (lua_isstring(L, -1)) {
+    colors[SchemeNorm][COLOR_FG] = strdup(lua_tostring(L, -1));
+  }
+  // pops fg //
+  lua_pop(L, 1);
+
+  lua_getfield(L, -1, "bg");
+
+  if (lua_isstring(L, -1)) {
+    colors[SchemeNorm][COLOR_BG] = strdup(lua_tostring(L, -1));
+  }
+  // pops bg //
+  lua_pop(L, 1);
+
+  lua_getfield(L, -1, "border");
+
+  if (lua_isstring(L, -1)) {
+    colors[SchemeNorm][COLOR_BORDER] = strdup(lua_tostring(L, -1));
+  }
+  lua_pop(L, 2); // pop border and normal table
+
+  // pop dwm_colors
+  lua_pop(L, 1);
+
+  return SK_ACTION_SUCCESS;
+}
+
+SKActionResult load_tags(void) {
+  if (L == NULL) {
+    return SK_ACTION_FAILURE;
+  }
+
+  lua_getglobal(L, "dwm_tags");
+
+  if (!lua_istable(L, -1)) {
+    lua_pop(L, 1);
+    return SK_ACTION_FAILURE;
+  }
+
+  int len = luaL_len(L, -1);
+
+  if (len > LENGTH(tags)) {
+    len = LENGTH(tags);
+  }
+
+  for (int i = 1; i <= len; ++i) {
+    lua_rawgeti(L, -1, i);
+
+    if (!lua_isstring(L, -1)) {
+      lua_pop(L, 1);
+      break;
+    }
+
+    const char *tag_name = lua_tostring(L, -1);
+    tags[i - 1] = strdup(tag_name);
+
+    lua_pop(L, 1);
+  }
+
+  return SK_ACTION_SUCCESS;
 }
