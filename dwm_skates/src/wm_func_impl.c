@@ -740,6 +740,57 @@ void incnmaster(const Arg *arg) {
   arrange(selmon);
 }
 
+void vertical_tile(Monitor *m) {
+  unsigned int i, n;
+  int y, h;
+  Client *c;
+
+  for (n = 0, c = m->clients; c; c = c->next)
+    if (ISVISIBLE(c))
+      n++;
+  if (n == 0)
+    return;
+
+  y = 0;
+  h = m->wh / n; // Each window takes an equal height
+
+  for (i = 0, c = m->clients; c; c = c->next) {
+    if (!ISVISIBLE(c))
+      continue;
+    resize(c, m->wx, m->wy + y, m->ww, h - 2 * c->bw, 0);
+    y += h;
+  }
+}
+
+void horizontal_tile(Monitor *m) {
+  unsigned int i, n;
+  int x, y, h, w;
+  Client *c;
+
+  // Count the number of visible windows
+  for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++)
+    ;
+
+  if (n == 0)
+    return;
+
+  // Calculate the window height and width for each client
+  w = m->ww / n;
+  h = m->wh;
+
+  x = m->wx;
+  y = m->wy;
+
+  // Place clients horizontally
+  for (i = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+    resize(c, x, y, w - (2 * c->bw), h - (2 * c->bw), 0);
+    x += w;
+  }
+}
+
+void set_tile_vertical(const Arg *arg) { vertical_tile(selmon); }
+void set_tile_horizontal(const Arg *arg) { horizontal_tile(selmon); }
+
 #ifdef XINERAMA
 static int isuniquegeom(XineramaScreenInfo *unique, size_t n,
                         XineramaScreenInfo *info) {
@@ -1806,6 +1857,57 @@ void zoom(const Arg *arg) {
   pop(c);
 }
 
+void movestack(const Arg *arg) {
+  Client *c = NULL, *p = NULL, *pc = NULL, *i;
+
+  if (arg->i > 0) {
+    /* find the client after selmon->sel */
+    for (c = selmon->sel->next; c && (!ISVISIBLE(c) || c->isfloating);
+         c = c->next)
+      ;
+    if (!c)
+      for (c = selmon->clients; c && (!ISVISIBLE(c) || c->isfloating);
+           c = c->next)
+        ;
+
+  } else {
+    /* find the client before selmon->sel */
+    for (i = selmon->clients; i != selmon->sel; i = i->next)
+      if (ISVISIBLE(i) && !i->isfloating)
+        c = i;
+    if (!c)
+      for (; i; i = i->next)
+        if (ISVISIBLE(i) && !i->isfloating)
+          c = i;
+  }
+  /* find the client before selmon->sel and c */
+  for (i = selmon->clients; i && (!p || !pc); i = i->next) {
+    if (i->next == selmon->sel)
+      p = i;
+    if (i->next == c)
+      pc = i;
+  }
+
+  /* swap c and selmon->sel selmon->clients in the selmon->clients list */
+  if (c && c != selmon->sel) {
+    Client *temp = selmon->sel->next == c ? selmon->sel : selmon->sel->next;
+    selmon->sel->next = c->next == selmon->sel ? c : c->next;
+    c->next = temp;
+
+    if (p && p != c)
+      p->next = c;
+    if (pc && pc != selmon->sel)
+      pc->next = selmon->sel;
+
+    if (selmon->sel == selmon->clients)
+      selmon->clients = c;
+    else if (c == selmon->clients)
+      selmon->clients = selmon->sel;
+
+    arrange(selmon);
+  }
+}
+
 void handle_args(int argc, char *argv[]) {
   if (argc == 2 && !strcmp("-v", argv[1]))
     die("dwm_sk-" VERSION);
@@ -1884,36 +1986,18 @@ void set_default_keys() {
     return;
   }
 
-  int offset = 0;
-  int tag_c = 0;
+  memcpy(&keys[end_index], default_keys, LENGTH(default_keys) * sizeof(Key));
 
-  set_key_to_command(end_index, &offset, MODKEY, XK_t, setlayout, &layouts[0]);
-  set_key_to_command(end_index, &offset, MODKEY, XK_f, setlayout, &layouts[1]);
-  set_key_to_command(end_index, &offset, MODKEY, XK_m, setlayout, &layouts[2]);
-  set_key_to_func(end_index, &offset, MODKEY | ShiftMask | ControlMask, XK_e,
-                  quit);
-
-  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_1, view);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_2, view);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_3, view);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_4, view);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_5, view);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_6, view);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_7, view);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_8, view);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY, XK_9, view);
-
-  tag_c = 0;
-
-  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_1, tag);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_2, tag);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_3, tag);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_4, tag);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_5, tag);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_6, tag);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_7, tag);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_8, tag);
-  set_tag_key(&tag_c, end_index, &offset, MODKEY | ShiftMask, XK_9, tag);
+  for (int i = 0; i < LENGTH(keys); i++) {
+    for (int j = i + 1; j < LENGTH(keys); j++) {
+      if (keys[i].keysym == keys[j].keysym && keys[i].mod == keys[j].mod) {
+        keys[j].mod = NoSymbol;
+        keys[j].keysym = NoSymbol;
+        keys[j].func = NULL;
+        break;
+      }
+    }
+  }
 }
 
 void assign_lua_keys() {
@@ -1961,48 +2045,52 @@ void assign_lua_keys() {
           key->func = spawn;
         }
 
-        if (!strcmp(func_name, "quit")) {
+        else if (!strcmp(func_name, "quit")) {
           key->func = quit;
         }
 
-        if (!strcmp(func_name, "reload_dwm")) {
+        else if (!strcmp(func_name, "reload_dwm")) {
           key->func = reload_dwm;
         }
 
-        if (!strcmp(func_name, "killclient")) {
+        else if (!strcmp(func_name, "killclient")) {
           key->func = killclient;
         }
 
-        if (!strcmp(func_name, "setlayout")) {
+        else if (!strcmp(func_name, "setlayout")) {
           key->func = setlayout;
         }
 
-        if (!strcmp(func_name, "togglefloating")) {
+        else if (!strcmp(func_name, "togglefloating")) {
           key->func = togglefloating;
         }
 
-        if (!strcmp(func_name, "setmfact")) {
+        else if (!strcmp(func_name, "setmfact")) {
           key->func = setmfact;
         }
 
-        if (!strcmp(func_name, "incnmaster")) {
+        else if (!strcmp(func_name, "incnmaster")) {
           key->func = incnmaster;
         }
 
-        if (!strcmp(func_name, "focusstack")) {
+        else if (!strcmp(func_name, "focusstack")) {
           key->func = focusstack;
         }
 
-        if (!strcmp(func_name, "tagmon")) {
+        else if (!strcmp(func_name, "tagmon")) {
           key->func = tagmon;
         }
 
-        if (!strcmp(func_name, "focusmon")) {
+        else if (!strcmp(func_name, "focusmon")) {
           key->func = focusmon;
         }
 
-        if (!strcmp(func_name, "togglebar")) {
+        else if (!strcmp(func_name, "togglebar")) {
           key->func = togglebar;
+        }
+
+        else if (!strcmp(func_name, "movestack")) {
+          key->func = movestack;
         }
       }
 
