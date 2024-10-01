@@ -5,7 +5,7 @@
 #include <dwm_skates/commands.h>
 #include <dwm_skates/config.h>
 #include <dwm_skates/def.h>
-#include <dwm_skates/impl/wm_def.c>
+#include <dwm_skates/source/wm_def.c>
 #include <dwm_skates/wm_func_def.h>
 
 static const Rule rules[] = {
