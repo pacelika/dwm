@@ -10,13 +10,26 @@ local commands = {
 	terminal = {
 		"kitty",
 	},
+	screenshot_wholescreen = {
+		"flameshot",
+		"screen",
+	},
+	screenshot_select = {
+		"flameshot",
+		"gui",
+	},
+	file_manager = {
+		"kitty",
+		"-e",
+		"yazi",
+	},
 }
 
-dwm_fonts = {
+DWM_fonts = {
 	"monoscape:size=10",
 }
 
-dwm_colors = {
+DWM_colors = {
 	normal = {
 		fg = "#bbbbbb",
 		bg = "#222222",
@@ -29,7 +42,7 @@ dwm_colors = {
 	},
 }
 
-dwm_tags = {
+DWM_tags = {
 	"1",
 	"2",
 	"3",
@@ -41,34 +54,41 @@ dwm_tags = {
 	"9",
 }
 
-dwm_keys = {
-	{ modkey = key_super, key = key_d, func_name = "spawn", data = { argv = commands.program_launcher_main } },
-	{ modkey = key_super, key = key_p, func_name = "spawn", data = { argv = commands.program_launcher_secondary } },
-	{ modkey = key_super, key = key_Return, func_name = "spawn", data = { argv = commands.terminal } },
-	{ modkey = key_super, key = key_q, func_name = "killclient" },
-
-	{ modkey = key_super_shift, key = key_r, func_name = "reload_dwm" },
-	{ modkey = key_super_shift, key = key_q, func_name = "quit" },
-	{ modkey = key_super_shift, key = key_space, func_name = "togglefloating" },
-
-	{ modkey = key_super, key = key_j, func_name = "focusstack", data = { argn = 1 } },
-	{ modkey = key_super, key = key_k, func_name = "focusstack", data = { argn = -1 } },
-
-	{ modkey = key_super, key = key_h, func_name = "setmfact", data = { argn = -0.05 } },
-	{ modkey = key_super, key = key_l, func_name = "setmfact", data = { argn = 0.05 } },
-
-	{ modkey = key_super_shift, key = key_Return, func = "zoom" },
-	{ modkey = key_super, key = key_Tab, func_func = "view" },
-
-	{ modkey = key_super, key = key_Left, func_name = "focusmon", data = { argn = -1 } },
-	{ modkey = key_super, key = key_Right, func_name = "focusmon", data = { argn = 1 } },
-
-	{ modkey = key_super_shift, key = key_j, func_name = "tagmon", data = { argn = -1 } },
-	{ modkey = key_super_shift, key = key_k, func_name = "tagmon", data = { argn = 1 } },
+-- see default keymaps at https://github.com/pacelika/dwm_skates/dwm_skates/include/impl/config.c
+DWM_keys = {
+	{
+		modmask = modmask_super,
+		key = key_p,
+		func_name = "spawn",
+		data = { argv = commands.program_launcher_secondary },
+	},
+	{
+		modmask = modmask_super,
+		key = key_s,
+		func_name = "spawn",
+		data = { argv = commands.screenshot_select },
+	},
+	{
+		modmask = modmask_super_shift,
+		key = key_m,
+		func_name = "spawn",
+		data = { argv = commands.screenshot_wholescreen },
+	},
+	{
+		modmask = modmask_super_shift,
+		key = key_f,
+		func_name = "spawn",
+		data = { argv = commands.file_manager },
+	},
+	{
+		modmask = modmask_super_shift,
+		key = key_r,
+		func_name = "reload_dwm",
+	},
 }
 
-function _dwm_init() end
-
-function _dwm_reload() end
-
-function _dwm_terminate(ok) end
+function _DWM_preinit() end
+function _DWM_init() end
+function _DWM_event(event) end
+function _DWM_reload() end
+function _DWM_terminate() end

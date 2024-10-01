@@ -74,6 +74,8 @@ static lua_State *L = NULL;
 static int dwm_reload_count = 0;
 static char error_message[256] = {0};
 
+#define EVENT_DWMHANDLED_KEYPRESS KeyPress + 32
+
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags {
   char limitexceeded[LENGTH(tags) > 31 ? -1 : 1];
@@ -1168,8 +1170,36 @@ void run(void) {
   /* main event loop */
   XSync(dpy, False);
   while (running && !XNextEvent(dpy, &ev))
-    if (handler[ev.type])
+    if (handler[ev.type]) {
       handler[ev.type](&ev); /* call handler */
+
+      switch (ev.type) {
+      case KeyPress:
+        lua_getglobal(L, "_DWM_event");
+
+        if (lua_isfunction(L, -1)) {
+          lua_newtable(L);
+          lua_pushstring(L, "type");
+          lua_pushnumber(L, (int)EVENT_DWMHANDLED_KEYPRESS);
+          lua_settable(L, -3);
+
+          lua_pushstring(L, "keysym");
+          lua_pushnumber(L, ev.xkey.keycode);
+          lua_settable(L, -3);
+
+          lua_pushstring(L, "modmask");
+          lua_pushnumber(L, ev.xkey.state);
+          lua_settable(L, -3);
+
+          if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
+            printf("Error occurred in _DWM_event: %s\n", lua_tostring(L, -1));
+            return;
+          }
+        }
+
+        break;
+      }
+    }
 }
 
 void scan(void) {
@@ -1982,9 +2012,9 @@ void set_default_keys() {
     }
   }
 
-  if (end_index == 0) {
-    return;
-  }
+  // if (end_index == 0) {
+  //   return;
+  // }
 
   memcpy(&keys[end_index], default_keys, LENGTH(default_keys) * sizeof(Key));
 
@@ -2000,18 +2030,88 @@ void set_default_keys() {
   }
 }
 
-void assign_lua_keys() {
-  lua_getglobal(L, "dwm_keys");
+void set_func_by_name(Key *key, const char *func_name) {
+  if (func_name == NULL)
+    return;
 
-  if (lua_isnil(L, -1)) {
+  if (!strcmp(func_name, "spawn")) {
+    key->func = spawn;
+  }
+
+  else if (!strcmp(func_name, "quit")) {
+    key->func = quit;
+  }
+
+  else if (!strcmp(func_name, "reload_dwm")) {
+    key->func = reload_dwm;
+  }
+
+  else if (!strcmp(func_name, "killclient")) {
+    key->func = killclient;
+  }
+
+  else if (!strcmp(func_name, "setlayout")) {
+    key->func = setlayout;
+  }
+
+  else if (!strcmp(func_name, "togglefloating")) {
+    key->func = togglefloating;
+  }
+
+  else if (!strcmp(func_name, "setmfact")) {
+    key->func = setmfact;
+  }
+
+  else if (!strcmp(func_name, "incnmaster")) {
+    key->func = incnmaster;
+  }
+
+  else if (!strcmp(func_name, "focusstack")) {
+    key->func = focusstack;
+  }
+
+  else if (!strcmp(func_name, "tagmon")) {
+    key->func = tagmon;
+  }
+
+  else if (!strcmp(func_name, "focusmon")) {
+    key->func = focusmon;
+  }
+
+  else if (!strcmp(func_name, "togglebar")) {
+    key->func = togglebar;
+  }
+
+  else if (!strcmp(func_name, "movestack")) {
+    key->func = movestack;
+  }
+
+  else if (!strcmp(func_name, "set_tile_vertical")) {
+    key->func = set_tile_vertical;
+  }
+
+  else if (!strcmp(func_name, "set_tile_horizontal")) {
+    key->func = set_tile_horizontal;
+  }
+}
+
+SKActionResult assign_lua_keys() {
+  lua_getglobal(L, "DWM_keys");
+
+  if (!lua_istable(L, -1)) {
     printf("could not find keys\n");
     strcpy(error_message, "Could not find keys");
     system("xsetroot -name \"Could not find keys\"");
     set_default_keys();
-    return;
+    return SK_ACTION_FAILURE;
   }
 
   int keys_len = luaL_len(L, -1);
+
+  if (keys_len == 0) {
+    set_default_keys();
+    return SK_ACTION_SUCCESS;
+  }
 
   for (int i = 1; i <= keys_len; ++i) {
     lua_pushinteger(L, i);
@@ -2020,7 +2120,7 @@ void assign_lua_keys() {
     Key *key = &keys[i - 1];
 
     if (lua_istable(L, -1)) {
-      lua_getfield(L, -1, "modkey");
+      lua_getfield(L, -1, "modmask");
 
       if (lua_isnumber(L, -1)) {
         key->mod = (unsigned int)lua_tointeger(L, -1);
@@ -2034,66 +2134,17 @@ void assign_lua_keys() {
         key->keysym = XKeycodeToKeysym(dpy, lua_tointeger(L, -1), 0);
       }
 
+      // pop key
       lua_pop(L, 1);
 
       lua_getfield(L, -1, "func_name");
 
       if (lua_isstring(L, -1)) {
         const char *func_name = lua_tostring(L, -1);
-
-        if (!strcmp(func_name, "spawn")) {
-          key->func = spawn;
-        }
-
-        else if (!strcmp(func_name, "quit")) {
-          key->func = quit;
-        }
-
-        else if (!strcmp(func_name, "reload_dwm")) {
-          key->func = reload_dwm;
-        }
-
-        else if (!strcmp(func_name, "killclient")) {
-          key->func = killclient;
-        }
-
-        else if (!strcmp(func_name, "setlayout")) {
-          key->func = setlayout;
-        }
-
-        else if (!strcmp(func_name, "togglefloating")) {
-          key->func = togglefloating;
-        }
-
-        else if (!strcmp(func_name, "setmfact")) {
-          key->func = setmfact;
-        }
-
-        else if (!strcmp(func_name, "incnmaster")) {
-          key->func = incnmaster;
-        }
-
-        else if (!strcmp(func_name, "focusstack")) {
-          key->func = focusstack;
-        }
-
-        else if (!strcmp(func_name, "tagmon")) {
-          key->func = tagmon;
-        }
-
-        else if (!strcmp(func_name, "focusmon")) {
-          key->func = focusmon;
-        }
-
-        else if (!strcmp(func_name, "togglebar")) {
-          key->func = togglebar;
-        }
-
-        else if (!strcmp(func_name, "movestack")) {
-          key->func = movestack;
-        }
+        set_func_by_name(key, func_name);
       }
 
+      // pop func_name
       lua_pop(L, 1);
 
       lua_getfield(L, -1, "data");
@@ -2106,7 +2157,7 @@ void assign_lua_keys() {
 
           if (command_length == 0) {
             strcpy(error_message, "command length is 0");
-            return;
+            return SK_ACTION_FAILURE;
           }
 
           if (key->arg.v != NULL) {
@@ -2118,7 +2169,7 @@ void assign_lua_keys() {
 
           if (key->arg.v == NULL) {
             strcpy(error_message, "Failed to allocate memory for key");
-            return;
+            return SK_ACTION_FAILURE;
           }
 
           for (int command_index = 1; command_index <= command_length;
@@ -2138,12 +2189,14 @@ void assign_lua_keys() {
                      "Could not append to command, must be a string");
               break;
             }
+            // pop rawget ref //
             lua_pop(L, 1);
           }
 
           ((const char **)(key->arg.v))[command_length] = NULL;
         }
 
+        // pop data table //
         lua_pop(L, 1);
 
         lua_getfield(L, -1, "argn");
@@ -2158,20 +2211,16 @@ void assign_lua_keys() {
             key->arg.f = (float)number;
           }
         }
-
+        // pop argn //
         lua_pop(L, 1);
 
-        // lua_getfield(L, -1, "f");
-        // if (lua_isnumber(L, -1)) {
-        //   key->arg.f = (float)lua_tonumber(L, -1);
-        // }
-        //
-        // lua_pop(L, 1);
-
         lua_getfield(L, -1, "argun");
+
         if (lua_isnumber(L, -1)) {
           key->arg.ui = (unsigned int)lua_tonumber(L, -1);
         }
+
+        // pop argun
         lua_pop(L, 1);
       }
       lua_pop(L, 1);
@@ -2181,6 +2230,7 @@ void assign_lua_keys() {
   }
 
   set_default_keys();
+  return SK_ACTION_SUCCESS;
 }
 
 void set_keyglobals() {
@@ -2204,10 +2254,19 @@ void set_keyglobals() {
   }
 
   lua_pushinteger(L, MODKEY | ShiftMask);
-  lua_setglobal(L, "key_super_shift");
+  lua_setglobal(L, "modmask_super_shift");
+
+  lua_pushinteger(L, MODKEY | ShiftMask | ControlMask);
+  lua_setglobal(L, "modmask_super_control_shift");
 
   lua_pushinteger(L, MODKEY);
-  lua_setglobal(L, "key_super");
+  lua_setglobal(L, "modmask_super");
+
+  lua_pushinteger(L, EVENT_DWMHANDLED_KEYPRESS);
+  lua_setglobal(L, "EVENT_DWMHANDLED_KEYPRESS");
+
+  lua_pushinteger(L, KeyPress);
+  lua_setglobal(L, "EVENT_KEYPRESS");
 }
 
 void run_lua_script(void) {
@@ -2268,18 +2327,21 @@ void wm_init(int argc, char *argv[]) {
   run_lua_script();
 
   if (load_tags() == SK_ACTION_FAILURE) {
-    // Handle failure;
+    // TODO: Handle loading tags failure;
   }
 
   if (load_colors() == SK_ACTION_FAILURE) {
-    // Handle failure;
+    // TODO: Handle loading colors failure;
   }
 
-  assign_lua_keys();
-  lua_getglobal(L, "_dwm_preinit");
+  if (assign_lua_keys() == SK_ACTION_FAILURE) {
+    // TODO: Handle assigning keys failure //
+  }
+
+  lua_getglobal(L, "_DWM_preinit");
 
   if (lua_isfunction(L, -1)) {
-    lua_call(L, 0, 0);
+    lua_pcall(L, 0, 0, 0);
   }
 
   lua_pop(L, 1);
@@ -2290,10 +2352,10 @@ void wm_init(int argc, char *argv[]) {
 
   XSetErrorHandler(error_handler);
 
-  lua_getglobal(L, "_dwm_init");
+  lua_getglobal(L, "_DWM_init");
 
   if (lua_isfunction(L, -1)) {
-    lua_call(L, 0, 0);
+    lua_pcall(L, 0, 0, 0);
   }
 
   lua_pop(L, 1);
@@ -2306,10 +2368,10 @@ void wm_init(int argc, char *argv[]) {
 
   XCloseDisplay(dpy);
 
-  lua_getglobal(L, "_dwm_terminate");
+  lua_getglobal(L, "_DWM_terminate");
 
   if (lua_isfunction(L, -1)) {
-    lua_call(L, 0, 0);
+    lua_pcall(L, 0, 0, 0);
   }
 
   lua_pop(L, 1);
@@ -2330,10 +2392,10 @@ int should_run_function(int interval) {
 
 void reload_dwm(const Arg *arg) {
   run_lua_script();
-  lua_getglobal(L, "_dwm_reload");
+  lua_getglobal(L, "_DWM_reload");
 
   if (lua_isfunction(L, -1)) {
-    lua_call(L, 0, 0);
+    lua_pcall(L, 0, 0, 0);
   }
 
   for (int i = 0; i < LENGTH(keys); i++) {
@@ -2341,7 +2403,9 @@ void reload_dwm(const Arg *arg) {
   }
 
   ungrabkeys(dpy, DefaultRootWindow(dpy));
-  assign_lua_keys();
+  if (assign_lua_keys() == SK_ACTION_FAILURE) {
+    // TODO: Handle reloading keys failure //
+  }
   grabkeys();
   XSync(dpy, False);
 
@@ -2357,7 +2421,7 @@ SKActionResult load_colors(void) {
     return SK_ACTION_FAILURE;
   }
 
-  lua_getglobal(L, "dwm_colors");
+  lua_getglobal(L, "DWM_colors");
 
   if (!lua_istable(L, -1)) {
     lua_pop(L, 1);
@@ -2439,7 +2503,7 @@ SKActionResult load_tags(void) {
     return SK_ACTION_FAILURE;
   }
 
-  lua_getglobal(L, "dwm_tags");
+  lua_getglobal(L, "DWM_tags");
 
   if (!lua_istable(L, -1)) {
     lua_pop(L, 1);
