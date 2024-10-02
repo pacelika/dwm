@@ -1,4 +1,3 @@
-#include "dwm_skates/def.h"
 #include <X11/X.h>
 #include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
@@ -9,7 +8,6 @@
 
 #include <locale.h>
 #include <math.h>
-#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,8 +43,6 @@ int is_stack_mem(const void *ptr) {
   int local_var;
   return (ptr > (void *)&local_var);
 }
-
-#define compile_time_key(K, V) K##_##V
 
 void set_tag_key(int *tag_c, int end_index, int *offset, unsigned int mod,
                  KeySym key, const void *func) {
@@ -321,7 +317,7 @@ SKActionResult assign_lua_keys() {
   return SK_ACTION_SUCCESS;
 }
 
-void set_keyglobals() {
+void set_lua_globals() {
   if (dpy == NULL) {
     printf("Unable to open display\n");
     return;
@@ -362,7 +358,7 @@ void run_lua_script(void) {
     lua_close(L);
     L = luaL_newstate();
     luaL_openlibs(L);
-    set_keyglobals();
+    set_lua_globals();
   }
 
   const char *home_dir = getenv("HOME");
@@ -398,8 +394,16 @@ void wm_init(int argc, char *argv[]) {
   luaL_openlibs(L);
   handle_args(argc, argv);
 
-  set_keyglobals();
+  set_lua_globals();
   run_lua_script();
+
+  lua_getglobal(L, "_DWM_preinit");
+
+  if (lua_isfunction(L, -1)) {
+    lua_pcall(L, 0, 0, 0);
+  }
+
+  lua_pop(L, 1);
 
   if (load_tags() == SK_ACTION_FAILURE) {
     // TODO: Handle loading tags failure;
@@ -412,14 +416,6 @@ void wm_init(int argc, char *argv[]) {
   if (assign_lua_keys() == SK_ACTION_FAILURE) {
     // TODO: Handle assigning keys failure //
   }
-
-  lua_getglobal(L, "_DWM_preinit");
-
-  if (lua_isfunction(L, -1)) {
-    lua_pcall(L, 0, 0, 0);
-  }
-
-  lua_pop(L, 1);
 
   checkotherwm();
 
@@ -454,15 +450,16 @@ void wm_init(int argc, char *argv[]) {
   lua_close(L);
 }
 
-int should_run_function(int interval) {
-  static time_t last_execution_time = 0; // Holds the last execution time
-  time_t current_time = time(NULL);      // Get the current time
+int has_interval_passed(int interval) {
+  static time_t last_execution_time = 0;
+  time_t current_time = time(NULL);
 
   if (current_time - last_execution_time >= interval) {
-    last_execution_time = current_time; // Update the last execution time
-    return 1; // Enough time has passed, run the function
+    last_execution_time = current_time;
+    return 1;
   }
-  return 0; // Not enough time has passed, don't run the function
+
+  return 0;
 }
 
 void reload_dwm(const Arg *arg) {
@@ -487,11 +484,11 @@ void reload_dwm(const Arg *arg) {
   // TODO: reload tags and colors //
 }
 
-#define COLOR_FG 0
-#define COLOR_BG 1
-#define COLOR_BORDER 2
-
 SKActionResult load_colors(void) {
+  static int COLOR_FG = 0;
+  static int COLOR_BG = 1;
+  static int COLOR_BORDER = 2;
+
   if (L == NULL) {
     return SK_ACTION_FAILURE;
   }

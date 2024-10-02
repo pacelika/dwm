@@ -89,6 +89,10 @@ DWM_keys = {
 
 function _DWM_preinit() end
 function _DWM_init() end
-function _DWM_event(event) end
 function _DWM_reload() end
+
+function _DWM_event(event) end
+function _DWM_client_spawned(client) end
+function _DWM_client_killed(client) end
+
 function _DWM_terminate() end
