@@ -91,16 +91,16 @@ void set_key_to_command(int index, int *offset, unsigned int mod, KeySym key,
 }
 
 void set_default_keys() {
-  int end_index = 0;
+  int index = 0;
 
   for (int i = 0; i < LENGTH(keys); i++) {
     if (keys[i].func == NULL) {
-      end_index = i;
+      index = i;
       break;
     }
   }
 
-  memcpy(&keys[end_index], default_keys, LENGTH(default_keys) * sizeof(Key));
+  memcpy(&keys[index], default_keys, LENGTH(default_keys) * sizeof(Key));
 
   for (int i = 0; i < LENGTH(keys); i++) {
     for (int j = i + 1; j < LENGTH(keys); j++) {
@@ -390,9 +390,9 @@ int error_handler(Display *display, XErrorEvent *event) {
 }
 
 void wm_init(int argc, char *argv[]) {
+#ifdef LUA_RC
   L = luaL_newstate();
   luaL_openlibs(L);
-  handle_args(argc, argv);
 
   set_lua_globals();
   run_lua_script();
@@ -416,13 +416,20 @@ void wm_init(int argc, char *argv[]) {
   if (assign_lua_keys() == SK_ACTION_FAILURE) {
     // TODO: Handle assigning keys failure //
   }
+#endif
 
+  handle_args(argc, argv);
   checkotherwm();
+
+#ifndef LUA_RC
+    set_default_keys();
+#endif
 
   setup();
 
   XSetErrorHandler(error_handler);
 
+#ifdef LUA_RC
   lua_getglobal(L, "_DWM_init");
 
   if (lua_isfunction(L, -1)) {
@@ -430,15 +437,14 @@ void wm_init(int argc, char *argv[]) {
   }
 
   lua_pop(L, 1);
+#endif
 
   scan();
-
   run();
-
   cleanup();
-
   XCloseDisplay(dpy);
 
+#ifdef LUA_RC
   lua_getglobal(L, "_DWM_terminate");
 
   if (lua_isfunction(L, -1)) {
@@ -448,6 +454,7 @@ void wm_init(int argc, char *argv[]) {
   lua_pop(L, 1);
 
   lua_close(L);
+#endif
 }
 
 int has_interval_passed(int interval) {

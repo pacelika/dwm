@@ -20,5 +20,3 @@ static char dmenumon[2] =
 
 static const char *programlauncher_cmd[] = {"rofi", "-show", "run", SK_NULL};
 static const char *termcmd[] = {"kitty", SK_NULL};
-
-static const char *cmd[4] = {"rofi", "-show", "run", SK_NULL};

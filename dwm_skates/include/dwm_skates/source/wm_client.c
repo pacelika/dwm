@@ -367,6 +367,7 @@ void spawn(const Arg *arg) {
     sa.sa_handler = SIG_DFL;
     sigaction(SIGCHLD, &sa, NULL);
 
+#ifdef LUA_RC
     lua_getglobal(L, "_DWM_client_spawned");
 
     if (lua_isfunction(L, -1)) {
@@ -379,6 +380,8 @@ void spawn(const Arg *arg) {
     }
 
     lua_pop(L, 1);
+#endif
+
     execvp(((char **)arg->v)[0], (char **)arg->v);
     die("dwm: execvp '%s' failed:", ((char **)arg->v)[0]);
   }
@@ -388,6 +391,8 @@ void killclient(const Arg *arg) {
   if (!selmon->sel)
     return;
   if (!sendevent(selmon->sel, wmatom[WMDelete])) {
+
+#ifdef LUA_RC
     lua_getglobal(L, "_DWM_client_killed");
 
     if (lua_isfunction(L, -1)) {
@@ -400,6 +405,8 @@ void killclient(const Arg *arg) {
     }
 
     lua_pop(L, 1);
+#endif
+
     XGrabServer(dpy);
     XSetErrorHandler(xerrordummy);
     XSetCloseDownMode(dpy, DestroyAll);

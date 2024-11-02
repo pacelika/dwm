@@ -298,6 +298,7 @@ void run(void) {
     if (handler[ev.type]) {
       handler[ev.type](&ev); /* call handler */
 
+#ifdef LUA_RC
       switch (ev.type) {
       case KeyPress:
         lua_getglobal(L, "_DWM_event");
@@ -324,5 +325,6 @@ void run(void) {
 
         break;
       }
+#endif
     }
 }
