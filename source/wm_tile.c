@@ -1,4 +1,4 @@
-#include <dwm_skates/source/globals.c>
+#include <globals.c>
 
 void incnmaster(const Arg *arg) {
   selmon->nmaster = MAX(selmon->nmaster + arg->i, 0);

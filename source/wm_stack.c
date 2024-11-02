@@ -1,5 +1,4 @@
-#pragma once
-#include <dwm_skates/source/globals.c>
+#include <globals.c>
 
 void focusstack(const Arg *arg) {
   Client *c = NULL, *i;

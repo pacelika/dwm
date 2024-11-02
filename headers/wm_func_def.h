@@ -1,7 +1,7 @@
 #pragma once
 
 #include <X11/Xlib.h>
-#include <dwm_skates/def.h>
+#include <def.h>
 
 void applyrules(Client *c);
 int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);

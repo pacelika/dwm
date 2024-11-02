@@ -2,8 +2,8 @@
 
 #include <X11/Xlib.h>
 
-#include <dwm_skates/def.h>
-#include <dwm_skates/wm_func_def.h>
+#include <def.h>
+#include <wm_func_def.h>
 
 struct Client {
   char name[256];

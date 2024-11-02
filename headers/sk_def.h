@@ -24,8 +24,6 @@ typedef unsigned char *SKByteBuffer;
 #define SK_NO 0
 #define SK_FALSE 0
 
-#define SK_NULL (void *)0
-
 #define SK_EXIT_FAILURE 1
 #define SK_EXIT_SUCCESS 0
 

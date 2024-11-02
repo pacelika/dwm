@@ -1,6 +1,5 @@
-#pragma once
-
-#include <dwm_skates/source/globals.c>
+#include <globals.c>
+#include <wm_client.h>
 
 #include <locale.h>
 #include <signal.h>

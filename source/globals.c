@@ -2,12 +2,12 @@
 
 #include <X11/Xft/Xft.h>
 
-#include <dwm_skates/config.h>
-#include <dwm_skates/drw.h>
-#include <dwm_skates/macros.h>
-#include <dwm_skates/source/config.c>
-#include <dwm_skates/util.h>
-#include <dwm_skates/wm_func_def.h>
+#include <config.h>
+#include <drw.h>
+#include <macros.h>
+#include <config.c>
+#include <util.h>
+#include <wm_func_def.h>
 
 #ifdef LUA_RC
 #include <sk/lua/lauxlib.h>

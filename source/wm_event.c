@@ -1,6 +1,4 @@
-#pragma once
-
-#include <dwm_skates/source/globals.c>
+#include <globals.c>
 
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>

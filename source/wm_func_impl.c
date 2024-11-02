@@ -8,12 +8,9 @@
 
 #include <locale.h>
 #include <math.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -23,12 +20,14 @@
 #include <sk/lua/lualib.h>
 #endif
 
-#include <dwm_skates/source/wm_client.c>
-#include <dwm_skates/source/wm_event.c>
-#include <dwm_skates/source/wm_input.c>
-#include <dwm_skates/source/wm_monitor.c>
-#include <dwm_skates/source/wm_stack.c>
-#include <dwm_skates/source/wm_tile.c>
+#include <wm_client.c>
+#include <wm_event.c>
+#include <wm_input.c>
+#include <wm_monitor.c>
+#include <wm_stack.c>
+#include <wm_tile.c>
+
+#include <globals.c>
 
 void handle_args(int argc, char *argv[]) {
   if (argc == 2 && !strcmp("-v", argv[1]))

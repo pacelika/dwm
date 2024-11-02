@@ -1,6 +1,4 @@
-#pragma once
-
-#include <dwm_skates/source/globals.c>
+#include <globals.c>
 
 Monitor *createmon(void) {
   Monitor *m;

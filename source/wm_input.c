@@ -1,6 +1,4 @@
-#pragma once
-
-#include <dwm_skates/source/globals.c>
+#include <globals.c>
 
 void movemouse(const Arg *arg) {
   int x, y, ocx, ocy, nx, ny;

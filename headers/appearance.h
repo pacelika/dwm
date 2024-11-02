@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dwm_skates/def.h>
+#include <def.h>
 
 static const unsigned int borderpx = 1; /* border pixel of windows */
 static const unsigned int snap = 32;    /* snap pixel */

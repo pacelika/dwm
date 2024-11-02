@@ -1,10 +1,11 @@
+#pragma once
 /* See LICENSE file for copyright and license details. */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <dwm_skates/util.h>
+#include <util.h>
 
 void die(const char *fmt, ...) {
   va_list ap;

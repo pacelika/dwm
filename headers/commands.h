@@ -1,7 +1,7 @@
 #pragma once
 
-#include <dwm_skates/def.h>
-#include <dwm_skates/sk_def.h>
+#include <def.h>
+#include <sk_def.h>
 
 #define TAGKEYS(KEY, TAG)                                                      \
   {MODKEY, KEY, view, {.ui = 1 << TAG}},                                       \

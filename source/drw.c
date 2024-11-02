@@ -1,3 +1,4 @@
+#pragma once
 /* See LICENSE file for copyright and license details. */
 #include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
@@ -6,8 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <dwm_skates/drw.h>
-#include <dwm_skates/util.h>
+#include <drw.h>
+#include <util.h>
 
 #define UTF_INVALID 0xFFFD
 #define UTF_SIZ 4

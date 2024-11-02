@@ -1,7 +1,7 @@
 #pragma once
 
-#include <dwm_skates/appearance.h>
-#include <dwm_skates/commands.h>
+#include <appearance.h>
+#include <commands.h>
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>

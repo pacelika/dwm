@@ -2,11 +2,11 @@
 
 #include <X11/X.h>
 #include <X11/keysym.h>
-#include <dwm_skates/commands.h>
-#include <dwm_skates/config.h>
-#include <dwm_skates/def.h>
-#include <dwm_skates/source/wm_def.c>
-#include <dwm_skates/wm_func_def.h>
+#include <commands.h>
+#include <config.h>
+#include <def.h>
+#include <wm_def.c>
+#include <wm_func_def.h>
 
 static const Rule rules[] = {
     /* xprop(1):
