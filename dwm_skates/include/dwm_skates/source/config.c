@@ -28,9 +28,9 @@ static const Layout layouts[3] = {
 
 static Key default_keys[] = {
     /* modifier                     key        function        argument */
-    {MODKEY, XK_d, spawn, {.v = programlauncher_cmd}},
-    {MODKEY, XK_Return, spawn, {.v = termcmd}},
-    /* {MODKEY | ShiftMask, XK_r, reload_dwm, {0}}, */
+    {MODKEY, XK_d, spawn, {.v = COMMAND_PROGRAM_LAUNCHER}},
+    {MODKEY, XK_Return, spawn, {.v = COMMAND_TERMINAL}},
+    {MODKEY | ShiftMask, XK_s, spawn, {.v = COMMAND_SCREENSHOT}},
 
     {MODKEY, XK_b, togglebar, {0}},
 
@@ -82,7 +82,7 @@ static const Button buttons[] = {
     {ClkLtSymbol, 0, Button1, setlayout, {0}},
     {ClkLtSymbol, 0, Button3, setlayout, {.v = &layouts[2]}},
     {ClkWinTitle, 0, Button2, zoom, {0}},
-    {ClkStatusText, 0, Button2, spawn, {.v = termcmd}},
+    {ClkStatusText, 0, Button2, spawn, {.v = COMMAND_TERMINAL}},
     {ClkClientWin, MODKEY, Button1, movemouse, {0}},
     {ClkClientWin, MODKEY, Button2, togglefloating, {0}},
     {ClkClientWin, MODKEY, Button3, resizemouse, {0}},

@@ -17,9 +17,11 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifdef LUA_RC
 #include <sk/lua/lauxlib.h>
 #include <sk/lua/lua.h>
 #include <sk/lua/lualib.h>
+#endif
 
 #include <dwm_skates/source/wm_client.c>
 #include <dwm_skates/source/wm_event.c>
@@ -114,6 +116,7 @@ void set_default_keys() {
   }
 }
 
+#ifdef LUA_RC
 void set_func_by_name(Key *key, const char *func_name) {
   if (func_name == NULL)
     return;
@@ -179,7 +182,7 @@ void set_func_by_name(Key *key, const char *func_name) {
   }
 }
 
-SKActionResult assign_lua_keys() {
+int assign_lua_keys() {
   lua_getglobal(L, "DWM_keys");
 
   if (!lua_istable(L, -1)) {
@@ -187,14 +190,14 @@ SKActionResult assign_lua_keys() {
     strcpy(error_message, "Could not find keys");
     system("xsetroot -name \"Could not find keys\"");
     set_default_keys();
-    return SK_ACTION_FAILURE;
+    return -1;
   }
 
   int keys_len = luaL_len(L, -1);
 
   if (keys_len == 0) {
     set_default_keys();
-    return SK_ACTION_SUCCESS;
+    return 0;
   }
 
   for (int i = 1; i <= keys_len; ++i) {
@@ -241,7 +244,7 @@ SKActionResult assign_lua_keys() {
 
           if (command_length == 0) {
             strcpy(error_message, "command length is 0");
-            return SK_ACTION_FAILURE;
+            return -1;
           }
 
           if (key->arg.v != NULL) {
@@ -314,7 +317,7 @@ SKActionResult assign_lua_keys() {
   }
 
   set_default_keys();
-  return SK_ACTION_SUCCESS;
+  return 0;
 }
 
 void set_lua_globals() {
@@ -381,6 +384,7 @@ void run_lua_script(void) {
     cleanup();
   }
 }
+#endif
 
 int error_occured = 0;
 
@@ -405,15 +409,15 @@ void wm_init(int argc, char *argv[]) {
 
   lua_pop(L, 1);
 
-  if (load_tags() == SK_ACTION_FAILURE) {
+  if (load_tags() == -1) {
     // TODO: Handle loading tags failure;
   }
 
-  if (load_colors() == SK_ACTION_FAILURE) {
+  if (load_colors() == -1) {
     // TODO: Handle loading colors failure;
   }
 
-  if (assign_lua_keys() == SK_ACTION_FAILURE) {
+  if (assign_lua_keys() == -1) {
     // TODO: Handle assigning keys failure //
   }
 #endif
@@ -469,6 +473,7 @@ int has_interval_passed(int interval) {
   return 0;
 }
 
+#ifdef LUA_RC
 void reload_dwm(const Arg *arg) {
   run_lua_script();
   lua_getglobal(L, "_DWM_reload");
@@ -482,7 +487,7 @@ void reload_dwm(const Arg *arg) {
   }
 
   ungrabkeys(dpy, DefaultRootWindow(dpy));
-  if (assign_lua_keys() == SK_ACTION_FAILURE) {
+  if (assign_lua_keys() == -1) {
     // TODO: Handle reloading keys failure //
   }
   grabkeys();
@@ -491,27 +496,27 @@ void reload_dwm(const Arg *arg) {
   // TODO: reload tags and colors //
 }
 
-SKActionResult load_colors(void) {
+int load_colors(void) {
   static int COLOR_FG = 0;
   static int COLOR_BG = 1;
   static int COLOR_BORDER = 2;
 
   if (L == NULL) {
-    return SK_ACTION_FAILURE;
+    return -1;
   }
 
   lua_getglobal(L, "DWM_colors");
 
   if (!lua_istable(L, -1)) {
     lua_pop(L, 1);
-    return SK_ACTION_FAILURE;
+    return -1;
   }
 
   lua_getfield(L, -1, "selected");
 
   if (!lua_istable(L, -1)) {
     lua_pop(L, 1);
-    return SK_ACTION_FAILURE;
+    return -1;
   }
 
   lua_getfield(L, -1, "fg");
@@ -545,7 +550,7 @@ SKActionResult load_colors(void) {
 
   if (!lua_istable(L, -1)) {
     lua_pop(L, 1);
-    return SK_ACTION_FAILURE;
+    return -1;
   }
 
   lua_getfield(L, -1, "fg");
@@ -574,19 +579,19 @@ SKActionResult load_colors(void) {
   // pop dwm_colors
   lua_pop(L, 1);
 
-  return SK_ACTION_SUCCESS;
+  return 0;
 }
 
-SKActionResult load_tags(void) {
+int load_tags(void) {
   if (L == NULL) {
-    return SK_ACTION_FAILURE;
+    return -1;
   }
 
   lua_getglobal(L, "DWM_tags");
 
   if (!lua_istable(L, -1)) {
     lua_pop(L, 1);
-    return SK_ACTION_FAILURE;
+    return -1;
   }
 
   int len = luaL_len(L, -1);
@@ -609,5 +614,6 @@ SKActionResult load_tags(void) {
     lua_pop(L, 1);
   }
 
-  return SK_ACTION_SUCCESS;
+  return 0;
 }
+#endif

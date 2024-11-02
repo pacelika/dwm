@@ -9,9 +9,13 @@
 #include <dwm_skates/util.h>
 #include <dwm_skates/wm_func_def.h>
 
+#ifdef LUA_RC
 #include <sk/lua/lauxlib.h>
 #include <sk/lua/lua.h>
 #include <sk/lua/lualib.h>
+
+static lua_State *L = NULL;
+#endif
 
 #define XINERAMA 1
 
@@ -57,7 +61,6 @@ struct NumTags {
 };
 
 // My variables //
-static lua_State *L = NULL;
 static int dwm_reload_count = 0;
 static char error_message[256] = {0};
 
