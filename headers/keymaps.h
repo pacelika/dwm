@@ -7,6 +7,7 @@
 #include <wm_def.c>
 #include <wm_func_def.h>
 
+#include <macros.h>
 #include <layouts.h>
 #include <rules.h>
 

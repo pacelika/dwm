@@ -103,6 +103,7 @@ void set_default_keys() {
 
   memcpy(&keys[index], default_keys, LENGTH(default_keys) * sizeof(Key));
 
+  // remove duplicates //
   for (int i = 0; i < LENGTH(keys); i++) {
     for (int j = i + 1; j < LENGTH(keys); j++) {
       if (keys[i].keysym == keys[j].keysym && keys[i].mod == keys[j].mod) {
