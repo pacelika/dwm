@@ -1,6 +1,4 @@
 # Suckless DWM refactored
-<br />
-<br />
 Optionally you can use Lua for hooking into DWM events and adding additional behavior without recompiling the source. This config file lives in ~/.config/dwm/config.lua
 <br />
 <br />
