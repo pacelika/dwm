@@ -7,7 +7,6 @@
 #include <X11/keysym.h>
 
 #include <locale.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -185,10 +184,12 @@ void set_func_by_name(Key *key, const char *func_name) {
 int assign_lua_keys() {
   lua_getglobal(L, "DWM_keys");
 
-  if (!lua_istable(L, -1)) {
-    printf("could not find keys\n");
-    strcpy(error_message, "Could not find keys");
-    system("xsetroot -name \"Could not find keys\"");
+  if (lua_isnil(L,-1)) {
+    set_default_keys();
+    return 0;
+  }
+
+  if (!lua_istable(L, -1) && !lua_isnil(L,-1)) {
     set_default_keys();
     return -1;
   }
@@ -374,7 +375,7 @@ void run_lua_script(void) {
   char script_path[256];
 
   snprintf(script_path, sizeof(script_path), "%s/%s", home_dir,
-           ".config/dwm_sk/rc.lua");
+           ".config/dwm/config.lua");
 
   int lua_has_error = luaL_dofile(L, script_path);
 
@@ -446,8 +447,6 @@ void wm_init(int argc, char *argv[]) {
   scan();
   run();
   cleanup();
-  XCloseDisplay(dpy);
-
 #ifdef LUA_RC
   lua_getglobal(L, "_DWM_terminate");
 
@@ -459,6 +458,7 @@ void wm_init(int argc, char *argv[]) {
 
   lua_close(L);
 #endif
+  XCloseDisplay(dpy);
 }
 
 int has_interval_passed(int interval) {
@@ -506,6 +506,11 @@ int load_colors(void) {
   }
 
   lua_getglobal(L, "DWM_colors");
+
+  if (lua_isnil(L,-1)) {
+    lua_pop(L, 1);
+    return 0;
+  }
 
   if (!lua_istable(L, -1)) {
     lua_pop(L, 1);
@@ -588,6 +593,11 @@ int load_tags(void) {
   }
 
   lua_getglobal(L, "DWM_tags");
+
+  if (lua_isnil(L,-1)) {
+    lua_pop(L,1);
+    return 0;
+  }
 
   if (!lua_istable(L, -1)) {
     lua_pop(L, 1);

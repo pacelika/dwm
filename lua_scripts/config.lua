@@ -10,11 +10,7 @@ local commands = {
 	terminal = {
 		"kitty",
 	},
-	screenshot_wholescreen = {
-		"flameshot",
-		"screen",
-	},
-	screenshot_select = {
+	screenshot = {
 		"flameshot",
 		"gui",
 	},
@@ -54,7 +50,7 @@ DWM_tags = {
 	"9",
 }
 
--- see default keymaps at https://github.com/pacelika/dwm_skates/dwm_skates/include/impl/config.c
+-- See default keymaps at https://github.com/pacelika/dwm/blob/main/headers/keymaps.h
 DWM_keys = {
 	{
 		modmask = modmask_super,
@@ -66,13 +62,7 @@ DWM_keys = {
 		modmask = modmask_super,
 		key = key_s,
 		func_name = "spawn",
-		data = { argv = commands.screenshot_select },
-	},
-	{
-		modmask = modmask_super_shift,
-		key = key_m,
-		func_name = "spawn",
-		data = { argv = commands.screenshot_wholescreen },
+		data = { argv = commands.screenshot },
 	},
 	{
 		modmask = modmask_super_shift,

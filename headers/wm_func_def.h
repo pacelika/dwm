@@ -97,8 +97,8 @@ int sendevent(Client *c, Atom proto);
 
 void wm_init(int argc, char *argv[]);
 void reload_dwm(const Arg *arg);
-SKActionResult load_tags(void);
-SKActionResult load_colors(void);
+int load_tags(void);
+int load_colors(void);
 
 void set_tile_vertical(const Arg *arg);
 void set_tile_horizontal(const Arg *arg);
