@@ -12,6 +12,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <math.h>
 
 #ifdef LUA_RC
 #include <sk/lua/lauxlib.h>
@@ -44,12 +45,12 @@ int is_stack_mem(const void *ptr) {
   return (ptr > (void *)&local_var);
 }
 
-void set_tag_key(int *tag_c, int end_index, int *offset, unsigned int mod,
+void set_tag_key(int *tag_c, int index, int *offset, unsigned int mod,
                  KeySym key, const void *func) {
-  keys[end_index + *offset].keysym = key;
-  keys[end_index + *offset].mod = mod;
-  keys[end_index + *offset].func = func;
-  keys[end_index + *offset].arg.ui = 1 << *tag_c;
+  keys[index + *offset].keysym = key;
+  keys[index + *offset].mod = mod;
+  keys[index + *offset].func = func;
+  keys[index + *offset].arg.ui = 1 << *tag_c;
   *offset += 1;
   *tag_c += 1;
 }
@@ -90,9 +91,10 @@ void set_key_to_command(int index, int *offset, unsigned int mod, KeySym key,
   }
 }
 
-void set_default_keys() {
+int load_default_keys(){
   int index = 0;
 
+  // Finds the index where a func pointer is not set (NULL), and updates the index where it should start populating data
   for (int i = 0; i < LENGTH(keys); i++) {
     if (keys[i].func == NULL) {
       index = i;
@@ -102,7 +104,7 @@ void set_default_keys() {
 
   memcpy(&keys[index], default_keys, LENGTH(default_keys) * sizeof(Key));
 
-  // remove duplicates //
+  // Remove duplicate keys //
   for (int i = 0; i < LENGTH(keys); i++) {
     for (int j = i + 1; j < LENGTH(keys); j++) {
       if (keys[i].keysym == keys[j].keysym && keys[i].mod == keys[j].mod) {
@@ -113,10 +115,11 @@ void set_default_keys() {
       }
     }
   }
+
+  return 0;
 }
 
-#ifdef LUA_RC
-void set_func_by_name(Key *key, const char *func_name) {
+void set_func_ptr_by_name(Key *key, const char *func_name) {
   if (func_name == NULL)
     return;
 
@@ -181,23 +184,110 @@ void set_func_by_name(Key *key, const char *func_name) {
   }
 }
 
-int assign_lua_keys() {
+int error_occured = 0;
+
+int error_handler(Display *display, XErrorEvent *event) {
+  error_occured = 1;
+  return 0;
+}
+
+void wm_init(int argc, char *argv[]) {
+#ifdef LUA_RC
+  L = luaL_newstate();
+  luaL_openlibs(L);
+
+  set_lua_globals();
+  run_lua_script();
+
+  lua_getglobal(L, "_DWM_preinit");
+
+  if (lua_isfunction(L, -1)) {
+    lua_pcall(L, 0, 0, 0);
+  }
+
+  lua_pop(L, 1);
+
+  if (load_tags_from_lua() == -1) {
+    // TODO: Handle loading tags failure;
+  }
+
+  if (load_colors_from_lua() == -1) {
+    // TODO: Handle loading colors failure;
+  }
+
+  if (load_keys_from_lua() == -1) {
+    // TODO: Handle assigning keys failure //
+  }
+#endif
+
+  handle_args(argc, argv);
+  checkotherwm();
+
+#ifndef LUA_RC
+    load_default_keys();
+#endif
+
+  setup();
+
+  XSetErrorHandler(error_handler);
+
+#ifdef LUA_RC
+  lua_getglobal(L, "_DWM_init");
+
+  if (lua_isfunction(L, -1)) {
+    lua_pcall(L, 0, 0, 0);
+  }
+
+  lua_pop(L, 1);
+#endif
+
+  scan();
+  run();
+  cleanup();
+#ifdef LUA_RC
+  lua_getglobal(L, "_DWM_terminate");
+
+  if (lua_isfunction(L, -1)) {
+    lua_pcall(L, 0, 0, 0);
+  }
+
+  lua_pop(L, 1);
+
+  lua_close(L);
+#endif
+  XCloseDisplay(dpy);
+}
+
+int has_interval_passed(int interval) {
+  static time_t last_execution_time = 0;
+  time_t current_time = time(NULL);
+
+  if (current_time - last_execution_time >= interval) {
+    last_execution_time = current_time;
+    return 1;
+  }
+
+  return 0;
+}
+
+#ifdef LUA_RC
+int load_keys_from_lua() {
   lua_getglobal(L, "DWM_keys");
 
   if (lua_isnil(L,-1)) {
-    set_default_keys();
+    int _ = load_default_keys();
     return 0;
   }
 
   if (!lua_istable(L, -1) && !lua_isnil(L,-1)) {
-    set_default_keys();
+    int _ = load_default_keys();
     return -1;
   }
 
   int keys_len = luaL_len(L, -1);
 
   if (keys_len == 0) {
-    set_default_keys();
+    int _ = load_default_keys();
     return 0;
   }
 
@@ -229,7 +319,7 @@ int assign_lua_keys() {
 
       if (lua_isstring(L, -1)) {
         const char *func_name = lua_tostring(L, -1);
-        set_func_by_name(key, func_name);
+        set_func_ptr_by_name(key, func_name);
       }
 
       // pop func_name
@@ -317,7 +407,7 @@ int assign_lua_keys() {
     lua_pop(L, 1);
   }
 
-  set_default_keys();
+  load_default_keys();
   return 0;
 }
 
@@ -368,7 +458,7 @@ void run_lua_script(void) {
   const char *home_dir = getenv("HOME");
 
   if (home_dir == NULL) {
-    fprintf(stderr, "Could get home home directory.\n");
+    fprintf(stderr, "Could not get home directory.\n");
     return;
   }
 
@@ -385,95 +475,7 @@ void run_lua_script(void) {
     cleanup();
   }
 }
-#endif
 
-int error_occured = 0;
-
-int error_handler(Display *display, XErrorEvent *event) {
-  error_occured = 1;
-  return 0;
-}
-
-void wm_init(int argc, char *argv[]) {
-#ifdef LUA_RC
-  L = luaL_newstate();
-  luaL_openlibs(L);
-
-  set_lua_globals();
-  run_lua_script();
-
-  lua_getglobal(L, "_DWM_preinit");
-
-  if (lua_isfunction(L, -1)) {
-    lua_pcall(L, 0, 0, 0);
-  }
-
-  lua_pop(L, 1);
-
-  if (load_tags() == -1) {
-    // TODO: Handle loading tags failure;
-  }
-
-  if (load_colors() == -1) {
-    // TODO: Handle loading colors failure;
-  }
-
-  if (assign_lua_keys() == -1) {
-    // TODO: Handle assigning keys failure //
-  }
-#endif
-
-  handle_args(argc, argv);
-  checkotherwm();
-
-#ifndef LUA_RC
-    set_default_keys();
-#endif
-
-  setup();
-
-  XSetErrorHandler(error_handler);
-
-#ifdef LUA_RC
-  lua_getglobal(L, "_DWM_init");
-
-  if (lua_isfunction(L, -1)) {
-    lua_pcall(L, 0, 0, 0);
-  }
-
-  lua_pop(L, 1);
-#endif
-
-  scan();
-  run();
-  cleanup();
-#ifdef LUA_RC
-  lua_getglobal(L, "_DWM_terminate");
-
-  if (lua_isfunction(L, -1)) {
-    lua_pcall(L, 0, 0, 0);
-  }
-
-  lua_pop(L, 1);
-
-  lua_close(L);
-#endif
-  XCloseDisplay(dpy);
-}
-
-int has_interval_passed(int interval) {
-  static time_t last_execution_time = 0;
-  time_t current_time = time(NULL);
-
-  if (current_time - last_execution_time >= interval) {
-    last_execution_time = current_time;
-    return 1;
-  }
-
-  return 0;
-}
-
-#ifdef LUA_RC
 void reload_dwm(const Arg *arg) {
   run_lua_script();
   lua_getglobal(L, "_DWM_reload");
@@ -487,7 +489,7 @@ void reload_dwm(const Arg *arg) {
   }
 
   ungrabkeys(dpy, DefaultRootWindow(dpy));
-  if (assign_lua_keys() == -1) {
+  if (load_keys_from_lua() == -1) {
     // TODO: Handle reloading keys failure //
   }
   grabkeys();
@@ -496,7 +498,7 @@ void reload_dwm(const Arg *arg) {
   // TODO: reload tags and colors //
 }
 
-int load_colors(void) {
+int load_colors_from_lua(void) {
   static int COLOR_FG = 0;
   static int COLOR_BG = 1;
   static int COLOR_BORDER = 2;
@@ -587,7 +589,7 @@ int load_colors(void) {
   return 0;
 }
 
-int load_tags(void) {
+int load_tags_from_lua(void) {
   if (L == NULL) {
     return -1;
   }

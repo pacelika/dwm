@@ -6,6 +6,7 @@
 void applyrules(Client *c);
 int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 void arrange(Monitor *m);
+
 void arrangemon(Monitor *m);
 void attach(Client *c);
 void attachstack(Client *c);
@@ -97,8 +98,24 @@ int sendevent(Client *c, Atom proto);
 
 void wm_init(int argc, char *argv[]);
 void reload_dwm(const Arg *arg);
-int load_tags(void);
-int load_colors(void);
+
+int load_tags_from_lua(void);
+int load_colors_from_lua(void);
+int load_keys_from_lua(void);
+int load_default_keys(void);
 
 void set_tile_vertical(const Arg *arg);
 void set_tile_horizontal(const Arg *arg);
+
+void set_key_to_func(int index, int *offset, unsigned int mod, KeySym key,
+                     const void *func);
+void set_key_to_command(int index, int *offset, unsigned int mod, KeySym key,
+                        const void *func, const void *cmd);
+void set_tag_key(int *tag_c, int index, int *offset, unsigned int mod,
+                 KeySym key, const void *func);
+
+int is_stack_mem(const void *ptr);
+void set_lua_globals();
+void run_lua_script(void);
+void set_func_ptr_by_name(Key *key, const char *func_name);
+void ungrabkeys(Display *dpy, Window root);
