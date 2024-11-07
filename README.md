@@ -1,11 +1,10 @@
-# DWM refactored
-
-Suckless DWM source code refactored 
-<br />
-Optionally you can use Lua for DWM hooks and behavior without recompiling. This config file lives in ~/.config/dwm/config.lua
+# Suckless DWM refactored
 <br />
 <br />
-You can disable Lua in the project by setting the LUA_RC flag set to OFF,e.g: cmake -D LUA_RC=OFF<br />
+Optionally you can use Lua for hooking into DWM events and adding additional behavior without recompiling the source. This config file lives in ~/.config/dwm/config.lua
+<br />
+<br />
+You can disable Lua in the project by setting the LUA_RC option set to OFF
 <br />
 <br />
 Official Suckless DWM: https://dwm.suckless.org/ 
