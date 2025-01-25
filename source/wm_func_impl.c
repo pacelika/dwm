@@ -31,13 +31,13 @@
 
 void handle_args(int argc, char *argv[]) {
   if (argc == 2 && !strcmp("-v", argv[1]))
-    die("dwm_sk-" VERSION);
+    die("dwm-" VERSION);
   else if (argc != 1)
-    die("usage: dwm_sk [-v]");
+    die("usage: dwm [-v]");
   if (!setlocale(LC_CTYPE, "") || !XSupportsLocale())
     fputs("warning: no locale support\n", stderr);
   if (!(dpy = XOpenDisplay(NULL)))
-    die("dwm_sk: cannot open display");
+    die("dwm: cannot open display");
 }
 
 int is_stack_mem(const void *ptr) {
@@ -131,9 +131,9 @@ void set_func_ptr_by_name(Key *key, const char *func_name) {
     key->func = quit;
   }
 
-  else if (!strcmp(func_name, "reload_dwm")) {
-    key->func = reload_dwm;
-  }
+  /* else if (!strcmp(func_name, "reload_dwm")) { */
+  /*   key->func = reload_dwm; */
+  /* } */
 
   else if (!strcmp(func_name, "killclient")) {
     key->func = killclient;

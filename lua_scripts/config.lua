@@ -1,11 +1,8 @@
 local commands = {
-	program_launcher_main = {
+	program_launcher = {
 		"rofi",
 		"-show",
 		"run",
-	},
-	program_launcher_secondary = {
-		"dmenu_run",
 	},
 	terminal = {
 		"kitty",
@@ -52,12 +49,6 @@ DWM_tags = {
 
 -- See default keymaps at https://github.com/pacelika/dwm/blob/main/headers/keymaps.h
 DWM_keys = {
-	{
-		modmask = modmask_super,
-		key = key_p,
-		func_name = "spawn",
-		data = { argv = commands.program_launcher_secondary },
-	},
 	{
 		modmask = modmask_super,
 		key = key_s,

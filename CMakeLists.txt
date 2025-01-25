@@ -10,7 +10,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}/lib")
 
 if(LUA_RC)
-    add_definitions(-DLUA_RC=1)
+    add_definitions(-DLUA_RC=ON)
     file(GLOB LUA_SRC CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/lua/*.c) 
     add_executable(${PROJECT_NAME} ${LUA_SRC} source/config.c source/drw.c source/dwm.c source/transient.c source/util.c source/wm_func_impl.c source/wm_lua_func_impl.c)
     message("-- Compiling Lua sources..")
