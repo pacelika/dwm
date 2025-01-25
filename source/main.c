@@ -51,6 +51,25 @@ void wm_init(int argc, char *argv[]) {
 
   XSetErrorHandler(error_handler);
   scan();
+
+  const char *home_dir = getenv("HOME");
+
+  if (home_dir == NULL) {
+    fprintf(stderr, "ERROR: Could not get home directory.\n");
+    return;
+  }
+
+  char script_path[256];
+  snprintf(script_path, sizeof(script_path), "%s/%s", home_dir,
+           ".config/dwm/autostart.sh");
+
+  FILE* autostart_file = fopen(script_path,"r");
+
+  if (autostart_file != NULL) {
+    system("~/.config/dwm/autostart.sh");
+    fclose(autostart_file);
+  }
+
   run();
   cleanup();
   XCloseDisplay(dpy);
