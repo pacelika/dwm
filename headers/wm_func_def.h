@@ -119,3 +119,5 @@ void set_lua_globals();
 void run_lua_script(void);
 void set_func_ptr_by_name(Key *key, const char *func_name);
 void ungrabkeys(Display *dpy, Window root);
+
+void unfloatvisible(const Arg *arg);

@@ -54,6 +54,20 @@ void applyrules(Client *c) {
       c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
 }
 
+void unfloatvisible(const Arg *arg)
+{
+    Client *c;
+
+    for (c = selmon->clients; c; c = c->next)
+        if (ISVISIBLE(c) && c->isfloating)
+            c->isfloating = c->isfixed;
+
+    if (arg && arg->v)
+        setlayout(arg);
+    else
+        arrange(selmon);
+}
+
 int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
   int baseismin;
   Monitor *m = c->mon;
@@ -344,15 +358,6 @@ void showhide(Client *c) {
   }
 }
 
-#ifdef LUA_RC
-void send_client_table_to_lua(const Arg *arg) {
-  lua_newtable(L);
-  lua_pushstring(L, "name");
-  lua_pushstring(L, ((char **)(arg->v))[0]);
-  lua_settable(L, -3);
-}
-#endif
-
 void spawn(const Arg *arg) {
   struct sigaction sa;
 
@@ -369,21 +374,6 @@ void spawn(const Arg *arg) {
     sa.sa_handler = SIG_DFL;
     sigaction(SIGCHLD, &sa, NULL);
 
-#ifdef LUA_RC
-    lua_getglobal(L, "_DWM_client_spawned");
-
-    if (lua_isfunction(L, -1)) {
-      send_client_table_to_lua(arg);
-      if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
-        char buffer[255];
-        sprintf(buffer, "xsetroot -name \"%s\"", lua_tostring(L, -1));
-        system(buffer);
-      }
-    }
-
-    lua_pop(L, 1);
-#endif
-
     execvp(((char **)arg->v)[0], (char **)arg->v);
     die("dwm: execvp '%s' failed:", ((char **)arg->v)[0]);
   }
@@ -393,22 +383,6 @@ void killclient(const Arg *arg) {
   if (!selmon->sel)
     return;
   if (!sendevent(selmon->sel, wmatom[WMDelete])) {
-
-#ifdef LUA_RC
-    lua_getglobal(L, "_DWM_client_killed");
-
-    if (lua_isfunction(L, -1)) {
-      send_client_table_to_lua(arg);
-      if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
-        char buffer[255];
-        sprintf(buffer, "xsetroot -name \"%s\"", lua_tostring(L, -1));
-        system(buffer);
-      }
-    }
-
-    lua_pop(L, 1);
-#endif
-
     XGrabServer(dpy);
     XSetErrorHandler(xerrordummy);
     XSetCloseDownMode(dpy, DestroyAll);

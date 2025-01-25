@@ -11,7 +11,7 @@
 #include <layouts.h>
 #include <rules.h>
 
-static Key default_keys[] = {
+static Key keys[] = {
     /* modifier                     key        function        argument */
     {MODKEY, XK_d, spawn, {.v = COMMAND_PROGRAM_LAUNCHER}},
     {MODKEY, XK_Return, spawn, {.v = COMMAND_TERMINAL}},
@@ -42,6 +42,8 @@ static Key default_keys[] = {
     {MODKEY, XK_space, setlayout, {0}},
 
     {MODKEY | ShiftMask, XK_space, togglefloating, {0}},
+	/* { MODKEY|ShiftMask,             XK_space,  unfloatvisible, {0} }, */
+    {MODKEY | ShiftMask, XK_z, unfloatvisible, {.v = &layouts[1]}},
 
     {MODKEY, XK_0, view, {.ui = ~0}},
     {MODKEY | ShiftMask, XK_0, tag, {.ui = ~0}},
@@ -56,11 +58,9 @@ static Key default_keys[] = {
     {MODKEY | ShiftMask, XK_k, movestack, {.i = -1}},
     TAGKEYS(XK_1, 0) TAGKEYS(XK_2, 1) TAGKEYS(XK_3, 2) TAGKEYS(XK_4, 3)
         TAGKEYS(XK_5, 4) TAGKEYS(XK_6, 5) TAGKEYS(XK_7, 6) TAGKEYS(XK_8, 7)
-        TAGKEYS(XK_9, 8)
-    {MODKEY | ShiftMask, XK_q, quit, {0}}
-};
+            TAGKEYS(XK_9, 8){MODKEY | ShiftMask, XK_q, quit, {0}}};
 
-static Key keys[100] = {0};
+/* static Key keys[100] = {0}; */
 
 static const Button buttons[] = {
     /* click                event mask      button          function argument */
