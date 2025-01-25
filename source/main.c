@@ -12,7 +12,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <math.h>
+/* #include <math.h> */
 
 #include <wm_client.c>
 #include <wm_event.c>
@@ -35,15 +35,13 @@ void handle_args(int argc, char *argv[]) {
 }
 
 int is_stack_mem(const void *ptr) {
-  int local_var;
-  return (ptr > (void *)&local_var);
+    int local_var;
+    return (ptr > (void *)&local_var);
 }
 
-int error_occured = 0;
-
 int error_handler(Display *display, XErrorEvent *event) {
-  error_occured = 1;
-  return 0;
+    // TODO: Handle error handling //
+    return 0;
 }
 
 void wm_init(int argc, char *argv[]) {
@@ -56,16 +54,4 @@ void wm_init(int argc, char *argv[]) {
   run();
   cleanup();
   XCloseDisplay(dpy);
-}
-
-int has_interval_passed(int interval) {
-  static time_t last_execution_time = 0;
-  time_t current_time = time(NULL);
-
-  if (current_time - last_execution_time >= interval) {
-    last_execution_time = current_time;
-    return 1;
-  }
-
-  return 0;
 }
