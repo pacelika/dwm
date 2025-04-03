@@ -7,8 +7,10 @@ pub fn build(b: *std.Build) !void {
 	
 	const skip_file_check_option = b.option(bool,"skip-checks","skip the desktop file check") orelse false;
 	const target = b.standardTargetOptions(.{});
-	const install_step = b.step("install_bin","update dwm binary");
 	
+	const install_step = b.step("install_bin","builds and installs the binary");
+	const install_cmd = b.addSystemCommand(&.{"install", "-m", "755", "zig-out/bin/dwm", "/usr/local/bin/dwm"});
+		
 	const exe = b.addExecutable(.{
 		.name = "dwm",
 		.target = target,
@@ -18,15 +20,21 @@ pub fn build(b: *std.Build) !void {
 	const cwd = std.fs.cwd();
 
 	if (!skip_file_check_option) {
-			std.debug.print("INFO: Running dependency checks. Hint: -Dskip-checks=true\n",.{});
-			
 			const desktop_file = cwd.openFile(desktop_file_path,.{}) catch |err| switch(err) {
 			std.posix.OpenError.FileNotFound => {
 				std.debug.print("INFO: '{s}' desktop file does not exists\n",.{desktop_file_path});
 				
-				const created_file = cwd.createFile(desktop_file_path,.{}) catch |create_err| {
-					std.debug.print("Error: Failed to create '{s}'. Zig must be ran as root\nWhat Error: {any}\n",.{desktop_file_path,create_err});
-					return;
+				const created_file = cwd.createFile(desktop_file_path,.{}) catch |create_err| switch(create_err) {
+					std.posix.OpenError.AccessDenied  => {
+						std.debug.print("Error: Failed to create '{s}'. Zig must be ran as root\nWhat Error: {any}\n",.{desktop_file_path,create_err});
+						std.debug.print("INFO: Running dependency checks. Hint: -Dskip-checks=true\n",.{});
+						return;
+					},
+					else => {
+						std.debug.print("Error: Failed to create '{s}'.\nWhat Error: {any}\n",.{desktop_file_path,create_err});
+						std.debug.print("INFO: Running dependency checks. Hint: -Dskip-checks=true\n",.{});
+						return;
+					}
 				};
 				
 				defer created_file.close();
@@ -37,7 +45,7 @@ pub fn build(b: *std.Build) !void {
 				_ = try created_file.write("Exec=dwm\n");
 				_ = try created_file.write("Type=Aplication\n");
 				
-				std.debug.print("INFO: Successfully create desktop file '{s}'\n",.{desktop_file_path});
+				std.debug.print("INFO: Successfully created desktop file '{s}'\n",.{desktop_file_path});
 				return;
 			},
 			else => {
@@ -51,12 +59,11 @@ pub fn build(b: *std.Build) !void {
 		
 	for (libraries) |library| { exe.linkSystemLibrary(library); }
 	for (include_paths) |path| { exe.addIncludePath(.{.cwd_relative = path}); }
-	exe.addCSourceFiles(.{.root = b.path("source"),.files = &.{"config.c","drw.c","dwm.c","transient.c","util.c","main.c"}});	
+	exe.addCSourceFiles(.{.root = b.path("source"),.files = &.{"config.c","drw.c","dwm.c","transient.c","util.c","main.c"}});
 	
-	const copy_cmd = b.addSystemCommand(&.{"cp","./zig-out/bin/dwm","/usr/local/bin/dwm"});
-	install_step.dependOn(&copy_cmd.step);
+	b.default_step.dependOn(&exe.step);
+	install_step.dependOn(&exe.step);
+	install_step.dependOn(&install_cmd.step);
 	
-	b.installArtifact(exe);
-	
-	std.debug.print("INFO: OK\n",.{});
+	b.installArtifact(exe);	
 }
