@@ -1,6 +1,5 @@
 bin/
 zig-out/
-
 .zig-cache/
 .cache/
 
@@ -10,4 +9,3 @@ CMakeCache.txt
 Makefile
 
 compile_commands.json
-

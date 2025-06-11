@@ -25,7 +25,7 @@ typedef struct Client Client;
 enum { SchemeNorm, SchemeSel }; /* color schemes */
 
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-// enum { SchemeNorm, SchemeSel };                  /* color schemes */
+
 enum {
   NetSupported,
   NetWMName,
@@ -38,6 +38,7 @@ enum {
   NetClientList,
   NetLast
 }; /* EWMH atoms */
+
 enum {
   WMProtocols,
   WMDelete,
@@ -45,6 +46,7 @@ enum {
   WMTakeFocus,
   WMLast
 }; /* default atoms */
+
 enum {
   ClkTagBar,
   ClkLtSymbol,
@@ -54,8 +56,3 @@ enum {
   ClkRootWin,
   ClkLast
 }; /* clicks */
-
-typedef enum {
-  SK_ACTION_FAILURE,
-  SK_ACTION_SUCCESS,
-} SKActionResult;

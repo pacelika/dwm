@@ -10,8 +10,6 @@ static const int topbar = 1;            /* 0 means bottom bar */
 static const char *fonts[] = {"monospace:size=10"};
 static const char dmenufont[] = "monospace:size=10";
 
-#define SCHEME_NAME_PINK
-
 #ifdef SCHEME_NAME_PINK
 static const char* const scheme_normal_fg = col_white;
 static const char* const scheme_normal_bg = col_black;
